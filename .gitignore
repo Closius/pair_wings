@@ -1,3 +1,7 @@
+api_secret.json
+pybit.log
+BTCUSDT.db
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
