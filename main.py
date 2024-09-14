@@ -73,8 +73,8 @@ def main():
             filepath=db_filepath,
             recreate=True,
             pair="BTCUSDT",
-            interval=30,
-            start='13.09.2024 13:00:00,00')
+            interval="5",
+            start='14.09.2024 13:00:00,00')
     elif r == 3:
         data_show.draw_candles(db_filepath, pair="BTCUSDT")
     elif r == 4:

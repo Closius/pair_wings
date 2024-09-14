@@ -143,16 +143,17 @@ class DataCollector:
         self.db_filepath = filepath
         self.log.info(f"DataCollector {self.db_filepath}")
         self.db = DB(self.db_filepath)
-        self.http = HTTP(testnet=True)
-        self.ws = WebSocket(
-            testnet=True,
-            channel_type="linear"
-        )
+        self.http = HTTP(demo=True)
         self.stop_event = stop_event
 
     def collect_tickers(self, pair, recreate=False):
         self.log.info(f"collect_tickers {pair}")
         self.db.create_ticker_table(pair, recreate)
+
+        self.ws = WebSocket(
+            testnet=True,  # testnet gives wrong values! at least on HTTP
+            channel_type="linear"
+        )
 
         def handle_ticker(message):
             try:
