@@ -1,7 +1,6 @@
 *_api_secret.json
 pybit.log
 *.db
-python/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
