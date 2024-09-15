@@ -5,11 +5,11 @@ import json5
 from pybit.unified_trading import WebSocket
 from pybit.unified_trading import HTTP
 
-from lib.stocks import stock_interface
+from lib.stocks.stock_interface import IStock
 from lib import utils
 
 
-class StockBybit(stock_interface.IStock):
+class StockBybit(IStock):
 
     def __init__(self, account_name=None, api_secrets_file=None, settings_file=None):
         self.log = logging.getLogger(__name__)
