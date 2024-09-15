@@ -1,13 +1,12 @@
 import os
 import json5
 import logging
-import threading
-import concurrent.futures
 
 from pybit.unified_trading import HTTP
 
 import data_collector
 import data_show
+
 
 def main():
     if os.path.exists("pybit.log"):
@@ -48,25 +47,10 @@ def main():
     log.info(r)
     db_filepath = "main.db"
     if r == 1:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            event = threading.Event()
-            future = executor.submit(
-                data_collector.collect_tickers,
-                filepath=db_filepath,
-                pair="BTCUSDT",
-                recreate=True,
-                stop_event=event,
-            )
-            log.info("==========================")
-            log.info("Press any key to Stop collection")
-            r = input()
-            log.info(r)
-            event.set()
-            log.info("Interrupted")
-            try:
-                future.result()
-            except Exception as exc:
-                log.exception(exc)
+        data_collector.collect_stream_tickers(
+            filepath=db_filepath,
+            pair="BTCUSDT",
+            recreate=True)
 
     elif r == 2:
         data_collector.collect_history_candles(

@@ -1,30 +1,33 @@
 import logging
-import json5
 
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 
 import pandas as pd
 
-import data_collector
+import database
 
 
 def draw_candles(db_filepath, pair):
     log = logging.getLogger(__name__)
-    db = data_collector.DB(db_filepath)
+    db = database.DB(db_filepath)
     data_candle = db.read_candle_table(pair)
 
-    apd = mpf.make_addplot(data_candle['High'], type='scatter')
+    # apd = mpf.make_addplot(data_candle['High'], type='scatter')
+    # fig, axlist = mpf.plot(data_candle, type='candle', style='charles', title=pair,
+    #                        addplot=apd, volume=True, returnfig=True)
 
-    mpf.plot(data_candle, type='candle', style='charles', title=pair, addplot=apd, volume=True)
+    fig, axlist = mpf.plot(data_candle, type='candle', style='charles', title=pair,
+                           volume=True, returnfig=True)
 
+    mpf.show()
 
 def draw_tickers_and_candles(db_filepath, pair):
     """
         Do not use. For reference only
     """
     log = logging.getLogger(__name__)
-    db = data_collector.DB(db_filepath)
+    db = database.DB(db_filepath)
     data_ticker = db.read_ticker_table(pair)
     data_candle = db.read_candle_table(pair)
 

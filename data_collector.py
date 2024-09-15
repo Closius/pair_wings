@@ -1,140 +1,14 @@
 import json5
-import sqlite3
 import logging
-
-import pandas as pd
+import threading
+import concurrent.futures
 
 from pybit.unified_trading import WebSocket
 from pybit.unified_trading import HTTP
 
 import utils
+import database
 
-
-class DB:
-    _TIME = ("Time", "TIMESTAMP")
-    TICKER_COLUMNS = [
-        ("markPrice", "REAL"),
-        ("ask1Size", "REAL"),
-        ("bid1Size", "REAL"),
-        ("openInterest", "REAL"),
-        ("openInterestValue", "REAL")
-    ]
-
-    CANDLE_COLUMNS = [
-        ("startTime", "TIMESTAMP", "Time"),
-        ("openPrice", "REAL", "Open"),
-        ("highPrice", "REAL", "High"),
-        ("lowPrice", "REAL", "Low"),
-        ("closePrice", "REAL", "Close"),
-        ("volume", "REAL", "Volume"),
-        ("turnover", "REAL", "Turnover"),
-    ]
-
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.con = sqlite3.connect(self.filepath)
-        self.cur = self.con.cursor()
-
-    def create_ticker_table(self, pair, recreate=False):
-        if recreate:
-            self.cur.execute(
-                f"""
-                DROP TABLE IF EXISTS tickers_{pair}
-            """
-            )
-        cols = ",".join([f"{x[0]} {x[1]}" for x in self.TICKER_COLUMNS])
-        self.cur.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS tickers_{pair}
-                ({self._TIME[0]} {self._TIME[1]} UNIQUE, 
-                {cols})
-        """
-        )
-
-    def create_candle_table(self, pair, recreate=False):
-        if recreate:
-            self.cur.execute(
-                f"""
-                DROP TABLE IF EXISTS candles_{pair}
-            """
-            )
-        cols = ",".join([f"{x[0]} {x[1]}" for x in self.CANDLE_COLUMNS])
-        self.cur.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS candles_{pair}
-                ({cols})
-        """
-        )
-
-    def insert_ticker_table(self, pair, time, **kwargs):
-
-        cols = ",".join([f"{kwargs[x[0]]}" for x in self.TICKER_COLUMNS])
-        self.cur.execute(
-            f"""
-            INSERT INTO tickers_{pair} VALUES
-                ({time}, {cols})
-        """
-        )
-        self.con.commit()
-
-    def insert_candle_table(self, pair, **kwargs):
-
-        cols = ",".join([f"{kwargs[x[0]]}" for x in self.CANDLE_COLUMNS])
-        self.cur.execute(
-            f"""
-            INSERT INTO candles_{pair} VALUES
-                ({cols})
-        """
-        )
-        self.con.commit()
-
-    def read_ticker_table(self, pair, t_start=None, t_end=None):
-        if t_start and t_end:
-            res = self.cur.execute(
-                f"""SELECT * FROM tickers_{pair} 
-                WHERE {self._TIME[0]} >= {t_start} AND time <= {t_end}
-                ORDER BY {self._TIME[0]}"""
-            )
-        elif t_start:
-            res = self.cur.execute(
-                f"""SELECT * FROM tickers_{pair} 
-                WHERE {self._TIME[0]} >= {t_start}
-                ORDER BY {self._TIME[0]}"""
-            )
-        else:
-            res = self.cur.execute(
-                f"""SELECT * FROM tickers_{pair} 
-                ORDER BY {self._TIME[0]}"""
-            )
-        df = pd.DataFrame(res.fetchall(), columns=[self._TIME[0]] + [x[0] for x in self.TICKER_COLUMNS])
-        df[self._TIME[0]] = pd.to_datetime(df[self._TIME[0]].astype(int), unit='ms')
-        df.index = pd.DatetimeIndex(df[self._TIME[0]])
-        # df.drop(columns=[self._TIME[0]])
-        return df
-
-    def read_candle_table(self, pair, t_start=None, t_end=None):
-        if t_start and t_end:
-            res = self.cur.execute(
-                f"""SELECT * FROM candles_{pair} 
-                WHERE {self.CANDLE_COLUMNS[0][0]} >= {t_start} AND time <= {t_end}
-                ORDER BY {self.CANDLE_COLUMNS[0][0]}"""
-            )
-        elif t_start:
-            res = self.cur.execute(
-                f"""SELECT * FROM candles_{pair} 
-                WHERE {self.CANDLE_COLUMNS[0][0]} >= {t_start}
-                ORDER BY {self.CANDLE_COLUMNS[0][0]}"""
-            )
-        else:
-            res = self.cur.execute(
-                f"""SELECT * FROM candles_{pair} 
-                ORDER BY {self.CANDLE_COLUMNS[0][0]}"""
-            )
-        df = pd.DataFrame(res.fetchall(), columns=[x[2] for x in self.CANDLE_COLUMNS])
-        df[self.CANDLE_COLUMNS[0][2]] = pd.to_datetime(df[self.CANDLE_COLUMNS[0][2]].astype(int), unit='ms')
-        df.index = pd.DatetimeIndex(df[self.CANDLE_COLUMNS[0][2]])
-        # df.drop(columns=[self.CANDLE_COLUMNS[0][2]])
-        return df
 
 class DataCollector:
 
@@ -142,11 +16,12 @@ class DataCollector:
         self.log = logging.getLogger(__name__)
         self.db_filepath = filepath
         self.log.info(f"DataCollector {self.db_filepath}")
-        self.db = DB(self.db_filepath)
+        self.db = database.DB(self.db_filepath)
         self.http = HTTP(demo=True)
+        self.ws = None
         self.stop_event = stop_event
 
-    def collect_tickers(self, pair, recreate=False):
+    def collect_stream_tickers(self, pair, recreate=False):
         self.log.info(f"collect_tickers {pair}")
         self.db.create_ticker_table(pair, recreate)
 
@@ -157,9 +32,9 @@ class DataCollector:
 
         def handle_ticker(message):
             try:
-                self.db = DB(self.db_filepath)
-                attrs = {x[0]: message["data"][x[0]] for x in DB.TICKER_COLUMNS}
-                self.db.insert_ticker_table(
+                self.db = database.DB(self.db_filepath)
+                attrs = {x[0]: message["data"][x[0]] for x in database.DB.TICKER_COLUMNS}
+                self.db.insert_ticker(
                     pair=pair,
                     time=message["ts"],
                     **attrs
@@ -200,8 +75,8 @@ class DataCollector:
 
         for candle in self.http.get_kline(**kargs)["result"]["list"]:
             self.log.info(json5.dumps(candle, indent=4))
-            attrs = {x[0]: candle[DB.CANDLE_COLUMNS.index(x)] for x in DB.CANDLE_COLUMNS}
-            self.db.insert_candle_table(
+            attrs = {x[0]: candle[database.DB.CANDLE_COLUMNS.index(x)] for x in database.DB.CANDLE_COLUMNS}
+            self.db.insert_candles(
                 pair=pair,
                 **attrs
             )
@@ -209,12 +84,33 @@ class DataCollector:
         self.log.info(f"collect_candles Finished.")
 
 
-def collect_tickers(filepath, pair, recreate, stop_event):
-    try:
-        dc = DataCollector(filepath, stop_event)
-        dc.collect_tickers(pair, recreate)
-    except Exception as ex:
-        logging.getLogger(__name__).exception(ex)
+def collect_stream_tickers(filepath, pair, recreate):
+    def _func(_filepath, _pair, _recreate, _stop_event):
+        try:
+            dc = DataCollector(_filepath, _stop_event)
+            dc.collect_stream_tickers(_pair, _recreate)
+        except Exception as ex:
+            logging.getLogger(__name__).exception(ex)
+    log = logging.getLogger(__name__)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        event = threading.Event()
+        future = executor.submit(
+            _func,
+            _filepath=filepath,
+            _pair=pair,
+            _recreate=recreate,
+            _stop_event=event,
+        )
+        log.info("==========================")
+        log.info("Press Enter to Stop collection")
+        input()
+        event.set()
+        log.info("Interrupted")
+        try:
+            future.result()
+        except Exception as exc:
+            log.exception(exc)
+
 
 def collect_history_candles(filepath, recreate, pair, interval, start, end=None):
     """
