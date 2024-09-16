@@ -26,7 +26,6 @@ class DataCollector:
         self.db.create_ticker_table(pair, recreate)
 
         for message in self.stock.stream_ticker(pair, stop_event):
-            self.db = database.DB(self.db_filepath, self.map)
             self.db.insert_ticker(
                 pair=pair,
                 **message
