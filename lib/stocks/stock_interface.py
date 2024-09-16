@@ -1,6 +1,8 @@
 import queue
 import threading
 
+from lib.stocks.db_map.map_interface import IMap
+
 
 class StockNotification:
     NOTIFICATIONS = {
@@ -25,11 +27,14 @@ class StockNotification:
 
 
 class IStock:
-    # TODO: Create unified schema for different stocks
+    """
+        Methods return data according to the implementation of IMap (DB names)
+    """
 
-    def __init__(self):
+    def __init__(self, map: IMap):
         # for example to notify that the order has been fulfilled
         self.notifications_queue = queue.Queue()
+        self.map = map
 
     def open_SHORT(self, uid, price, amount, stopLimit, takeProfit, limit=None):
         raise NotImplemented()
@@ -41,14 +46,17 @@ class IStock:
         raise NotImplemented()
 
     def get_history_tohlcv(self, pair, interval, start, end=None):
+        """
+
+        :return: interator
+        """
         raise NotImplemented()
 
-    def stream_ticker(self, pair, handler: callable, stop_event: threading.Event):
+    def stream_ticker(self, pair, stop_event: threading.Event):
         """
 
         :param pair:
-        :param handler: handler(message)
         :param stop_event: to stop streaming
-        :return:
+        :return: interator
         """
         raise NotImplemented()

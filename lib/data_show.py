@@ -5,12 +5,13 @@ import mplfinance as mpf
 
 import pandas as pd
 
+from lib.stocks.db_map.map_interface import IMap
 from lib import database
 
 
-def draw_candles(db_filepath, pair):
+def draw_candles(db_filepath, pair, map: IMap):
     log = logging.getLogger(__name__)
-    db = database.DB(db_filepath)
+    db = database.DB(db_filepath, map)
     data_candle = db.read_candle_table(pair)
 
     # apd = mpf.make_addplot(data_candle['High'], type='scatter')
@@ -22,12 +23,12 @@ def draw_candles(db_filepath, pair):
 
     mpf.show()
 
-def draw_tickers_and_candles(db_filepath, pair):
+def draw_tickers_and_candles(db_filepath, pair, map: IMap):
     """
         Do not use. For reference only
     """
     log = logging.getLogger(__name__)
-    db = database.DB(db_filepath)
+    db = database.DB(db_filepath, map)
     data_ticker = db.read_ticker_table(pair)
     data_candle = db.read_candle_table(pair)
 

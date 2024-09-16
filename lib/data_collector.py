@@ -8,35 +8,31 @@ from lib import database
 
 from lib.stocks.stock_interface import IStock
 
+from lib.stocks.db_map.map_interface import IMap
+
 
 class DataCollector:
 
-    def __init__(self, stock: IStock, filepath):
+    def __init__(self, stock: IStock, filepath, map: IMap):
         self.log = logging.getLogger(__name__)
         self.db_filepath = filepath
+        self.map = map
         self.stock = stock
         self.log.info(f"DataCollector {self.db_filepath}")
-        self.db = database.DB(self.db_filepath)
+        self.db = database.DB(self.db_filepath, self.map)
 
     def collect_stream_tickers(self, pair, stop_event, recreate=False):
         self.log.info(f"collect_tickers {pair}")
         self.db.create_ticker_table(pair, recreate)
 
-        def handle_ticker(message):
-            try:
-                self.db = database.DB(self.db_filepath)
-                attrs = {x[0]: message["data"][x[0]] for x in database.DB.TICKER_COLUMNS}
-                self.db.insert_ticker(
-                    pair=pair,
-                    time=message["ts"],
-                    **attrs
-                )
-                self.log.info(f'{utils.ts_to_text(message["ts"])} | {message["data"]["markPrice"]}')
-
-            except Exception as ex:
-                logging.getLogger(__name__).exception(ex)
-
-        self.stock.stream_ticker(pair, handle_ticker, stop_event)
+        for message in self.stock.stream_ticker(pair, stop_event):
+            self.db = database.DB(self.db_filepath, self.map)
+            self.db.insert_ticker(
+                pair=pair,
+                **message
+            )
+            self.log.info(f'{utils.ts_to_text(message[self.map.ticker.Time.db_name])} | '
+                          f'{message[self.map.ticker.MarkPrice.db_name]}')
 
         self.log.info(f"collect_tickers Finished.")
 
@@ -54,20 +50,18 @@ class DataCollector:
         self.db.create_candle_table(pair, recreate)
 
         for candle in self.stock.get_history_tohlcv(pair, interval, start, end):
-            self.log.info(json5.dumps(candle, indent=4))
-            attrs = {x[0]: candle[database.DB.CANDLE_COLUMNS.index(x)] for x in database.DB.CANDLE_COLUMNS}
             self.db.insert_candles(
                 pair=pair,
-                **attrs
+                **candle
             )
 
         self.log.info(f"collect_candles Finished.")
 
 
-def collect_stream_tickers(stock: IStock, filepath, pair, recreate):
+def collect_stream_tickers(stock: IStock, map: IMap, filepath, pair, recreate):
     def _func(_stock, _filepath, _pair, _recreate, _stop_event):
         try:
-            dc = DataCollector(_stock, _filepath)
+            dc = DataCollector(_stock, _filepath, map)
             dc.collect_stream_tickers(_pair, _stop_event, _recreate)
         except Exception as ex:
             logging.getLogger(__name__).exception(ex)
@@ -93,7 +87,7 @@ def collect_stream_tickers(stock: IStock, filepath, pair, recreate):
             log.exception(exc)
 
 
-def collect_history_candles(stock: IStock, filepath, recreate, pair, interval, start, end=None):
+def collect_history_candles(stock: IStock, map: IMap, filepath, recreate, pair, interval, start, end=None):
     """
 
     :param filepath:
@@ -105,7 +99,7 @@ def collect_history_candles(stock: IStock, filepath, recreate, pair, interval, s
     :return:
     """
     try:
-        dc = DataCollector(stock, filepath)
+        dc = DataCollector(stock, filepath, map)
         dc.collect_history_candles(pair, interval, start, end, recreate)
     except Exception as ex:
         logging.getLogger(__name__).exception(ex)

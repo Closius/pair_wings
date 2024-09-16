@@ -5,6 +5,7 @@ import logging
 from lib import data_show, data_collector
 
 from lib.stocks.stock_bybit import StockBybit
+from lib.stocks.db_map.map_bybit import MapBybit
 
 
 def main():
@@ -29,14 +30,16 @@ def main():
     # stock = StockBybit(account_name="pair_wings_demo",
     #                    api_secrets_file="api_secret.json",
     #                    settings_file="settings.json")
-    stock = StockBybit()
+    map = MapBybit()
+    stock = StockBybit(map=map)
     db_filepath = "main.db"
     if r == "1":
         data_collector.collect_stream_tickers(
             stock=stock,
             filepath=db_filepath,
             pair="BTCUSDT",
-            recreate=True)
+            recreate=True,
+            map=map)
 
     elif r == "2":
         data_collector.collect_history_candles(
@@ -45,9 +48,10 @@ def main():
             recreate=True,
             pair="BTCUSDT",
             interval="5",
-            start='14.09.2024 13:00:00,00')
+            start='16.09.2024 19:00:00,00',
+            map=map)
     elif r == "3":
-        data_show.draw_candles(db_filepath, pair="BTCUSDT")
+        data_show.draw_candles(db_filepath, pair="BTCUSDT", map=map)
 
 
 if __name__ == "__main__":

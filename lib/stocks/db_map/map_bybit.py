@@ -1,0 +1,31 @@
+from lib.stocks.db_map.map_interface import ITicker, ICandle, IMap
+
+
+class TickerBybit(ITicker):
+    def __init__(self):
+        super().__init__()
+        self.Time.api_name = "ts"
+        self.MarkPrice.api_name = "markPrice"
+        self.Ask1Size.api_name = "ask1Size"
+        self.Bid1Size.api_name = "bid1Size"
+        self.OpenInterest.api_name = "openInterest"
+        self.OpenInterestValue.api_name = "openInterestValue"
+
+
+class CandleBybit(ICandle):
+    def __init__(self):
+        super().__init__()
+        self.Time.api_name = "startTime"
+        self.Open.api_name = "openPrice"
+        self.High.api_name = "highPrice"
+        self.Low.api_name = "lowPrice"
+        self.Close.api_name = "closePrice"
+        self.Volume.api_name = "volume"
+        self.Turnover.api_name = "turnover"
+
+
+class MapBybit(IMap):
+    def __init__(self):
+        super().__init__()
+        self.ticker = TickerBybit()
+        self.candle = CandleBybit()

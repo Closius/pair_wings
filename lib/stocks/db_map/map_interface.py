@@ -1,0 +1,52 @@
+"""
+Mapping between Stock API and the local database
+"""
+
+
+class _Field:
+    def __init__(self, db_name, db_type, api_name=None):
+        self.db_name = db_name  # name of the column in database
+        self.db_type = db_type  # type (and key words nearby for table creating) in database
+        self.api_name = api_name  # name in stock API
+
+class _base:
+
+    def get_names_types_for_DB(self):
+        s = []
+        for i in range(len(self.get_db_names())):
+            s.append(f"{self.get_db_names()[i]} {self.get_db_types()[i]}")
+        return ",".join(s)
+    def get_db_names(self):
+        return [self.__dict__[i].db_name for i in self.__dict__ if not i.startswith("_")]
+    def get_db_types(self):
+        return [self.__dict__[i].db_type for i in self.__dict__ if not i.startswith("_")]
+    def get_api_names(self):
+        return [self.__dict__[i].api_name for i in self.__dict__ if not i.startswith("_")]
+
+
+class ITicker(_base):
+    def __init__(self):
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
+        self.MarkPrice = _Field("MarkPrice", "REAL", NotImplemented)
+        self.Ask1Size = _Field("Ask1Size", "REAL", NotImplemented)
+        self.Bid1Size = _Field("Bid1Size", "REAL", NotImplemented)
+        self.OpenInterest = _Field("OpenInterest", "REAL", NotImplemented)
+        self.OpenInterestValue = _Field("OpenInterestValue", "REAL", NotImplemented)
+
+
+class ICandle(_base):
+    def __init__(self):
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
+        self.Open = _Field("Open", "REAL", NotImplemented)
+        self.High = _Field("High", "REAL", NotImplemented)
+        self.Low = _Field("Low", "REAL", NotImplemented)
+        self.Close = _Field("Close", "REAL", NotImplemented)
+        self.Volume = _Field("Volume", "REAL", NotImplemented)
+        self.Turnover = _Field("Turnover", "REAL", NotImplemented)
+
+
+class IMap:
+
+    def __init__(self):
+        self.ticker = ITicker()
+        self.candle = ICandle()

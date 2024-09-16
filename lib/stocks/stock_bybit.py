@@ -1,4 +1,5 @@
 import logging
+import queue
 
 import json5
 
@@ -8,15 +9,18 @@ from pybit.unified_trading import HTTP
 from lib.stocks.stock_interface import IStock
 from lib import utils
 
+from lib.stocks.db_map.map_interface import IMap
+
 
 class StockBybit(IStock):
 
-    def __init__(self, account_name=None, api_secrets_file=None, settings_file=None):
+    def __init__(self, map: IMap, account_name=None, api_secrets_file=None, settings_file=None):
         self.log = logging.getLogger(__name__)
         self.log.info(f"Connecting to public Bybit ...")
         self.http = HTTP(demo=True)
         self.http_private = None
         self.ws = None
+        self.map = map
         if account_name:
             self.log.info(f"Connecting to private Bybit: {account_name} ...")
 
@@ -36,7 +40,7 @@ class StockBybit(IStock):
                 demo=True,
             )
 
-        super().__init__()
+        super().__init__(map=map)
 
     def _value_to_qty(self, value, symbol):
         """
@@ -157,20 +161,29 @@ class StockBybit(IStock):
             kargs["end"] = utils.datetime_text_to_ts(end)
 
         # TODO: it doesnt return everything! probably pagination
-        return self.http.get_kline(**kargs)["result"]["list"]
+        # It is not efficient but allow to use an universal DataCollector
+        for candle in self.http.get_kline(**kargs)["result"]["list"]:
+            yield {x[0]: x[1] for x in zip(self.map.candle.get_db_names(), candle)}
 
-    def stream_ticker(self, pair, handler, stop_event):
+    def stream_ticker(self, pair, stop_event):
         self.log.info(f"Connecting to public Bybit ws stream ...")
         self.ws = WebSocket(
             testnet=True,  # testnet gives wrong values! at least on HTTP
             channel_type="linear"
         )
+        q = queue.Queue()
 
         def handle_ticker(message):
-            # reformat here
-            handler(message)
+            # reformat
+            try:
+                message["data"].update({"ts": message["ts"]})
+                d = {x[1]: message["data"][x[0]]
+                     for x in list(zip(self.map.ticker.get_api_names(), self.map.ticker.get_db_names()))}
+                q.put(d)
+            except Exception as ex:
+                self.log.exception(ex)
 
         self.ws.ticker_stream(pair, handle_ticker)
 
         while not stop_event.is_set():
-            pass
+            yield q.get(block=True)
