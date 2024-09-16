@@ -1,5 +1,27 @@
 """
 Mapping between Stock API and the local database
+
+in the implementation you have to set "api_name" for each field:
+
+```
+class TickerBybit(ITicker):
+    def __init__(self):
+        super().__init__()
+        self.Time.api_name = "ts"
+        self.MarkPrice.api_name = "markPrice"
+        self.Ask1Size.api_name = "ask1Size"
+        ...
+```
+
+and use only implementation of IMap:
+
+```
+class MapBybit(IMap):
+    def __init__(self):
+        super().__init__()
+        self.ticker = TickerBybit()
+        ...
+```
 """
 
 
