@@ -39,11 +39,11 @@ class _base:
             s.append(f"{self.get_db_names()[i]} {self.get_db_types()[i]}")
         return ",".join(s)
     def get_db_names(self):
-        return [self.__dict__[i].db_name for i in self.__dict__ if not i.startswith("_")]
+        return [c.db_name for c in self.__dict__.values() if isinstance(c, _Field)]
     def get_db_types(self):
-        return [self.__dict__[i].db_type for i in self.__dict__ if not i.startswith("_")]
+        return [c.db_type for c in self.__dict__.values() if isinstance(c, _Field)]
     def get_api_names(self):
-        return [self.__dict__[i].api_name for i in self.__dict__ if not i.startswith("_")]
+        return [c.api_name for c in self.__dict__.values() if isinstance(c, _Field)]
 
 
 class ITicker(_base):
