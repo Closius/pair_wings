@@ -45,6 +45,7 @@ class IStock:
     def close_SHORT_LONG(self, uid, limit=None):
         raise NotImplemented()
 
+    # TODO maybe add intervals to collect several tohlcv at the same time
     def get_history_tohlcv(self, pair, interval, start, end=None):
         """
 
@@ -52,6 +53,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    # TODO create stream decorator
     def stream_ticker(self, pair, stop_event: threading.Event):
         """
 
@@ -60,3 +62,33 @@ class IStock:
         :return: interator
         """
         raise NotImplemented()
+
+    def stream_tohlcv(self, pair, intervals, stop_event: threading.Event):
+        """
+
+        To stream all requested intervals in one item or yild iterator
+
+        :param pair:
+        :param stop_event: to stop streaming
+        :return: interator
+        """
+        raise NotImplemented()
+
+    def stream_order_book(self, pair, stop_event: threading.Event):
+        """
+
+        :param pair:
+        :param stop_event: to stop streaming
+        :return: interator
+        """
+        raise NotImplemented()
+
+    def stream_order_status(self, pair, stop_event: threading.Event):
+        """
+
+        :param pair:
+        :param stop_event: to stop streaming
+        :return: interator
+        """
+        raise NotImplemented()
+
