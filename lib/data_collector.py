@@ -57,6 +57,21 @@ class DataCollector:
         self.log.info(f"collect_candles Finished.")
 
 
+    def collect_stream_order_book(self, pair, stop_event, recreate=False):
+        self.log.info(f"collect_stream_order_book {pair}")
+        self.db.create_order_book_table(pair, recreate)
+
+        for order_book in self.stock.stream_order_book(pair, stop_event):
+            self.db.insert_order_book(
+                pair=pair,
+                **order_book
+            )
+            self.log.info(f'{utils.ts_to_text(order_book[self.map.order_book.Time.db_name])}')
+
+
+        self.log.info(f"collect_stream_order_book Finished.")
+
+
 def collect_stream_tickers(stock: IStock, map: IMap, filepath, pair, recreate):
     def _func(_stock, _filepath, _pair, _recreate, _stop_event):
         try:
@@ -102,3 +117,32 @@ def collect_history_candles(stock: IStock, map: IMap, filepath, recreate, pair, 
         dc.collect_history_candles(pair, interval, start, end, recreate)
     except Exception as ex:
         logging.getLogger(__name__).exception(ex)
+
+
+def collect_stream_order_book(stock: IStock, map: IMap, filepath, pair, recreate):
+    def _func(_stock, _filepath, _pair, _recreate, _stop_event):
+        try:
+            dc = DataCollector(_stock, _filepath, map)
+            dc.collect_stream_order_book(_pair, _stop_event, _recreate)
+        except Exception as ex:
+            logging.getLogger(__name__).exception(ex)
+    log = logging.getLogger(__name__)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        event = threading.Event()
+        future = executor.submit(
+            _func,
+            _stock=stock,
+            _filepath=filepath,
+            _pair=pair,
+            _recreate=recreate,
+            _stop_event=event,
+        )
+        log.info("==========================")
+        log.info("Press Enter to Stop collection")
+        input()
+        event.set()
+        log.info("Interrupted")
+        try:
+            future.result()
+        except Exception as exc:
+            log.exception(exc)

@@ -2,6 +2,8 @@ import logging
 import queue
 
 import json5
+import numpy as np
+import pandas as pd
 
 from pybit.unified_trading import WebSocket
 from pybit.unified_trading import HTTP
@@ -9,7 +11,7 @@ from pybit.unified_trading import HTTP
 from lib.stocks.stock_interface import IStock
 from lib import utils
 
-from lib.stocks.db_map.map_interface import IMap
+from lib.stocks.db_map.map_interface import IMap, _NDARRAY_DB_TYPE
 
 
 class StockBybit(IStock):
@@ -295,20 +297,66 @@ See working code examples of this logic in the FAQ.
             testnet=True,  # testnet gives wrong values! at least on HTTP
             channel_type="linear"
         )
-        q = queue.Queue()
+
+        stream = queue.Queue()
 
         def handle_ticker(message):
+            handle_ticker.asks_d_snapshot = None
+            handle_ticker.bids_d_snapshot = None
+
+            def asks_bids_delta_snapshot(raw_data, is_snapshot, big_snapshot: dict | None) -> dict | None:
+                df = {float(p): float(v) for p, v in raw_data}
+                if is_snapshot:
+                    return df
+                else:
+                    if isinstance(big_snapshot, dict):
+                        res = {}
+                        for p, v in big_snapshot.items():
+                            if p not in df:
+                                continue
+                            elif df[p] == 0:
+                                continue
+                            else:
+                                res[p] = df[p]
+                        return res
+                    else:
+                        return None
+
             # reformat
             try:
-                message["data"].update({"ts": message["ts"]})
-                d = {x[1]: message["data"][x[0]]
-                     for x in list(zip(self.map.ticker.get_api_names(), self.map.ticker.get_db_names()))}
-                q.put(d)
+                is_snapshot = True if message["type"] == "snapshot" else False
+
+                d = {}
+                d[self.map.order_book.Time.db_name] = message["ts"]
+
+                self.log.info("Time")
+                self.log.info(message["ts"])
+                self.log.info("Asks")
+                self.log.info(message["data"][self.map.order_book.Asks.api_name])
+                handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Asks.api_name],
+                                                    is_snapshot=is_snapshot,
+                                                    big_snapshot=handle_ticker.asks_d_snapshot)
+                if handle_ticker.asks_d_snapshot is None:
+                    return
+                else:
+                    d[self.map.order_book.Asks.db_name] = np.array([[p,v] for p,v in handle_ticker.asks_d_snapshot.items()])
+
+                handle_ticker.bids_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Bids.api_name],
+                                                    is_snapshot=is_snapshot,
+                                                    big_snapshot=handle_ticker.bids_d_snapshot)
+                if handle_ticker.bids_d_snapshot is None:
+                    return
+                else:
+                    d[self.map.order_book.Bids.db_name] = np.array([[p,v] for p,v in handle_ticker.bids_d_snapshot.items()])
+
+                stream.put(d)
             except Exception as ex:
                 self.log.exception(ex)
 
+        # TODO: order stored in DB is wrong..
+        #  need to preserve the order in Map interface
+
         self.ws.orderbook_stream(depth=50, symbol=pair, callback=handle_ticker)
 
-
         while not stop_event.is_set():
-            yield q.get(block=True)
+            yield stream.get(block=True)

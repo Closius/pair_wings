@@ -45,7 +45,6 @@ class IStock:
     def close_SHORT_LONG(self, uid, limit=None):
         raise NotImplemented()
 
-    # TODO maybe add intervals to collect several tohlcv at the same time
     def get_history_tohlcv(self, pair, interval, start, end=None):
         """
 

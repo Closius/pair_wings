@@ -1,12 +1,37 @@
+import logging
 import sqlite3
+import numpy as np
+import io
 
 import pandas as pd
 
-from lib.stocks.db_map.map_interface import IMap
+from lib.stocks.db_map.map_interface import IMap, _NDARRAY_DB_TYPE
+
+
+def numpy_to_sqlite(arr):
+    """
+    http://stackoverflow.com/a/31312102/190597 (SoulNibbler)
+    """
+    out = io.BytesIO()
+    np.save(out, arr)
+    out.seek(0)
+    return sqlite3.Binary(out.read())
+
+
+def sqlite_to_numpy(text):
+    out = io.BytesIO(text)
+    out.seek(0)
+    return np.load(out)
 
 
 class DB:
     def __init__(self, filepath, map: IMap):
+        # Converts np.array to TEXT when inserting
+        sqlite3.register_adapter(np.ndarray, numpy_to_sqlite)
+        # Converts TEXT to np.array when selecting
+        sqlite3.register_converter(_NDARRAY_DB_TYPE, sqlite_to_numpy)
+
+        self.log = logging.getLogger(__name__)
         self.filepath = filepath
         self.map = map
         self.con = sqlite3.connect(self.filepath)
@@ -40,6 +65,20 @@ class DB:
         """
         )
 
+    def create_order_book_table(self, pair, recreate=False):
+        if recreate:
+            self.cur.execute(
+                f"""
+                DROP TABLE IF EXISTS order_book_{pair}
+            """
+            )
+        self.cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS order_book_{pair}
+                ({self.map.order_book.get_names_types_for_DB()})
+        """
+        )
+
     def insert_ticker(self, pair, **kwargs):
 
         cols = ",".join([f"{kwargs[x]}" for x in self.map.ticker.get_db_names()])
@@ -61,6 +100,22 @@ class DB:
         """
         )
         self.con.commit()
+
+    def insert_order_book(self, pair, **kwargs):
+        try:
+            # self.log.info(f"received : {kwargs[self.map.order_book.Time.db_name]} "
+            #               f"asks: {kwargs[self.map.order_book.Asks.db_name].shape} "
+            #               f"bids: {kwargs[self.map.order_book.Asks.db_name].shape}  ")
+            f = f"""
+                INSERT INTO order_book_{pair} VALUES
+                    ({kwargs[self.map.order_book.Time.db_name]}, 
+                    '{kwargs[self.map.order_book.Asks.db_name]}', 
+                    '{kwargs[self.map.order_book.Bids.db_name]}')
+            """
+            self.cur.execute(f)
+            self.con.commit()
+        except Exception as ex:
+            self.log.exception(ex)
 
     def read_ticker_table(self, pair, t_start=None, t_end=None):
         if t_start and t_end:
@@ -108,4 +163,28 @@ class DB:
         df[self.map.candle.Time.db_name] = pd.to_datetime(df[self.map.candle.Time.db_name].astype(int), unit='ms')
         df.index = pd.DatetimeIndex(df[self.map.candle.Time.db_name])
         # df.drop(columns=[self.map.candle.Time.db_name])
+        return df
+
+    def read_order_book_table(self, pair, t_start=None, t_end=None):
+        if t_start and t_end:
+            res = self.cur.execute(
+                f"""SELECT * FROM order_book_{pair} 
+                WHERE {self.map.order_book.Time.db_name} >= {t_start} AND time <= {t_end}
+                ORDER BY {self.map.order_book.Time.db_name}"""
+            )
+        elif t_start:
+            res = self.cur.execute(
+                f"""SELECT * FROM order_book_{pair} 
+                WHERE {self.map.order_book.Time.db_name} >= {t_start}
+                ORDER BY {self.map.order_book.Time.db_name}"""
+            )
+        else:
+            res = self.cur.execute(
+                f"""SELECT * FROM order_book_{pair} 
+                ORDER BY {self.map.order_book.Time.db_name}"""
+            )
+        df = pd.DataFrame(res.fetchall(), columns=self.map.order_book.get_db_names())
+        df[self.map.order_book.Time.db_name] = pd.to_datetime(df[self.map.order_book.Time.db_name].astype(int), unit='ms')
+        df.index = pd.DatetimeIndex(df[self.map.order_book.Time.db_name])
+        # df.drop(columns=[self.map.order_book.Time.db_name])
         return df

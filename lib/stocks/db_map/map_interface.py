@@ -24,6 +24,7 @@ class MapBybit(IMap):
 ```
 """
 
+_NDARRAY_DB_TYPE = "NDARRAY"
 
 class _Field:
     def __init__(self, db_name, db_type, api_name=None):
@@ -67,8 +68,15 @@ class ICandle(_base):
         self.Turnover = _Field("Turnover", "REAL", NotImplemented)
 
 
-class IMap:
+class IOrderBook(_base):
+    def __init__(self):
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
+        self.Bids = _Field("Bids", _NDARRAY_DB_TYPE, NotImplemented)
+        self.Asks = _Field("Asks", _NDARRAY_DB_TYPE, NotImplemented)
 
+
+class IMap:
     def __init__(self):
         self.ticker = ITicker()
         self.candle = ICandle()
+        self.order_book = IOrderBook()
