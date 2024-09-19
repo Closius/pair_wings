@@ -192,105 +192,8 @@ class StockBybit(IStock):
 
     def stream_order_book(self, pair, stop_event):
         """
-
-        https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
-
-Process snapshot/delta
-To process snapshot and delta messages, please follow these rules:
-
-Once you have subscribed successfully, you will receive a snapshot.
-The WebSocket will keep pushing delta messages every time the orderbook
-changes. If you receive a new snapshot message, you will have to reset
- your local orderbook. If there is a problem on Bybit's end, a
- snapshot will be re-sent, which is guaranteed to contain the latest data.
-
-To apply delta updates:
-
-If you receive an amount that is 0, delete the entry
-If you receive an amount that does not exist, insert it
-If the entry exists, you simply update the value
-See working code examples of this logic in the FAQ.
-
-        :param pair:
-        :param stop_event:
-        :return:
-
-        {
-    "topic": "orderbook.50.BTCUSDT",
-    "type": "snapshot",
-    "ts": 1672304484978,
-    "data": {
-        "s": "BTCUSDT",
-
-
-            > b	array	Bids. For snapshot stream, the element is sorted by price in descending order
-            >> b[0]	string	Bid price
-            >> b[1]	string	Bid size
-            The delta data has size=0, which means that all quotations for this price have been filled or cancelled
-
-        "b": [
-            ...,
-            [
-                "16493.50",
-                "0.006"
-            ],
-            [
-                "16493.00",
-                "0.100"
-            ]
-        ],
-
-
-            > a	array	Asks. For snapshot stream, the element is sorted by price in ascending order
-            >> a[0]	string	Ask price
-            >> a[1]	string	Ask size
-            The delta data has size=0, which means that all quotations for this price have been filled or cancelled
-
-
-
-        "a": [
-            [
-                "16611.00",
-                "0.029"
-            ],
-            [
-                "16612.00",
-                "0.213"
-            ],
-            ...,
-        ],
-
-
-        > u	integer	Update ID. Is a sequence. Occasionally, you'll receive
-        "u"=1, which is a snapshot data due to the restart of the
-        service. So please overwrite your local orderbook
-
-
-    "u": 18521288,
-
-        > seq	integer	Cross sequence
-        You can use this field to compare different levels orderbook data,
-        and for the smaller seq, then it means the data is generated earlier.
-
-
-    "seq": 7961638724
-    }
-
-        cts	number	The timestamp from the match engine when this
-        orderbook data is produced. It can be correlated with T
-        from public trade channel
-
-
-    "cts": 1672304484976
-}
-
-
+            https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
         """
-
-
-
-
-
 
         self.log.info(f"Connecting to public Bybit ws stream ...")
         self.ws = WebSocket(
@@ -329,10 +232,6 @@ See working code examples of this logic in the FAQ.
                 d = {}
                 d[self.map.order_book.Time.db_name] = message["ts"]
 
-                self.log.info("Time")
-                self.log.info(message["ts"])
-                self.log.info("Asks")
-                self.log.info(message["data"][self.map.order_book.Asks.api_name])
                 handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Asks.api_name],
                                                     is_snapshot=is_snapshot,
                                                     big_snapshot=handle_ticker.asks_d_snapshot)
@@ -352,9 +251,6 @@ See working code examples of this logic in the FAQ.
                 stream.put(d)
             except Exception as ex:
                 self.log.exception(ex)
-
-        # TODO: order stored in DB is wrong..
-        #  need to preserve the order in Map interface
 
         self.ws.orderbook_stream(depth=50, symbol=pair, callback=handle_ticker)
 

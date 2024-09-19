@@ -34,17 +34,20 @@ class _Field:
 
 class _base:
 
+    def __dict__sorted(self):
+        return sorted([c for c in self.__dict__.values() if isinstance(c, _Field)], key=lambda x: x.db_name)
+
     def get_names_types_for_DB(self):
         s = []
         for i in range(len(self.get_db_names())):
             s.append(f"{self.get_db_names()[i]} {self.get_db_types()[i]}")
         return ",".join(s)
     def get_db_names(self):
-        return [c.db_name for c in self.__dict__.values() if isinstance(c, _Field)]
+        return [c.db_name for c in self.__dict__sorted()]
     def get_db_types(self):
-        return [c.db_type for c in self.__dict__.values() if isinstance(c, _Field)]
+        return [c.db_type for c in self.__dict__sorted()]
     def get_api_names(self):
-        return [c.api_name for c in self.__dict__.values() if isinstance(c, _Field)]
+        return [c.api_name for c in self.__dict__sorted()]
 
 
 class ITicker(_base):

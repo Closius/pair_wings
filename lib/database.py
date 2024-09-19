@@ -102,20 +102,18 @@ class DB:
         self.con.commit()
 
     def insert_order_book(self, pair, **kwargs):
-        try:
-            # self.log.info(f"received : {kwargs[self.map.order_book.Time.db_name]} "
-            #               f"asks: {kwargs[self.map.order_book.Asks.db_name].shape} "
-            #               f"bids: {kwargs[self.map.order_book.Asks.db_name].shape}  ")
-            f = f"""
-                INSERT INTO order_book_{pair} VALUES
-                    ({kwargs[self.map.order_book.Time.db_name]}, 
-                    '{kwargs[self.map.order_book.Asks.db_name]}', 
-                    '{kwargs[self.map.order_book.Bids.db_name]}')
-            """
-            self.cur.execute(f)
-            self.con.commit()
-        except Exception as ex:
-            self.log.exception(ex)
+        cols_order = []
+        for db_name in self.map.order_book.get_db_names():
+            if db_name == self.map.order_book.Time.db_name:
+                cols_order.append(str(kwargs[db_name]))
+            else:
+                cols_order.append(f"'{kwargs[db_name]}'")
+        cols = ",".join(cols_order)
+        self.cur.execute(f"""
+            INSERT INTO order_book_{pair} VALUES
+                ({cols})
+        """)
+        self.con.commit()
 
     def read_ticker_table(self, pair, t_start=None, t_end=None):
         if t_start and t_end:
