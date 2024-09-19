@@ -48,7 +48,7 @@ class IStock:
     def get_history_tohlcv(self, pair, interval, start, end=None):
         """
 
-        :return: interator
+        :return: interator of dicts IMap.candle
         """
         raise NotImplemented()
 
@@ -58,7 +58,7 @@ class IStock:
 
         :param pair:
         :param stop_event: to stop streaming
-        :return: interator
+        :return: interator of dicts IMap.ticker
         """
         raise NotImplemented()
 
@@ -78,7 +78,7 @@ class IStock:
 
         :param pair:
         :param stop_event: to stop streaming
-        :return: interator
+        :return: interator of dicts IMap.order_book
         """
         raise NotImplemented()
 

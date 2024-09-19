@@ -3,6 +3,9 @@ Mapping between Stock API and the local database
 
 in the implementation you have to set "api_name" for each field:
 
+> Note: The order of fields might be important if the Stock API
+        returns list of values (not a dict with field names)
+
 ```
 class TickerBybit(ITicker):
     def __init__(self):
@@ -34,20 +37,17 @@ class _Field:
 
 class _base:
 
-    def __dict__sorted(self):
-        return sorted([c for c in self.__dict__.values() if isinstance(c, _Field)], key=lambda x: x.db_name)
-
     def get_names_types_for_DB(self):
         s = []
         for i in range(len(self.get_db_names())):
             s.append(f"{self.get_db_names()[i]} {self.get_db_types()[i]}")
         return ",".join(s)
     def get_db_names(self):
-        return [c.db_name for c in self.__dict__sorted()]
+        return [c.db_name for c in self.__dict__.values() if isinstance(c, _Field)]
     def get_db_types(self):
-        return [c.db_type for c in self.__dict__sorted()]
+        return [c.db_type for c in self.__dict__.values() if isinstance(c, _Field)]
     def get_api_names(self):
-        return [c.api_name for c in self.__dict__sorted()]
+        return [c.api_name for c in self.__dict__.values() if isinstance(c, _Field)]
 
 
 class ITicker(_base):
