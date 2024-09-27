@@ -1,7 +1,7 @@
 Pairwings
 =========
 
-Pairwings or PW is a framework for developing the trading strategies. It provides such capabilities as:
+Pairwings (or PW) is a framework for developing, testing and running the trading strategies. Features:
 
 - backends. The interface to the stock exchange API allows to easy implement the plug-in 
   to APIs of the different stock exchanges 
