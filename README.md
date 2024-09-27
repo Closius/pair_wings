@@ -17,12 +17,17 @@ Roadmap
 -------
 
 1. Finish the implementation of ByBit backend which allows to finish implementations of the data maps.
-2. Write a simple MA strategy.
-3. Implement the stock exchange based on the data from the local SQL database
-4. Develop the Strategy runner. Test on the local SQL database
-5. Write pytest. Add CI
-6. Add to PyPi index
-7. The documentation
+2. Check TODO in the code
+3. Write a simple MA strategy.
+4. Implement the stock exchange based on the data from the local SQL database
+5. Develop the Strategy runner. Test on the local SQL database
+6. Write pytest. Add CI
+7. Add to PyPi index
+8. The documentation
+
+Open questions: 
+
+1. Should I use SqlAlchemy ORM ?
 
 Prerequisites
 -------------

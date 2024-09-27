@@ -1,13 +1,15 @@
 import logging
+import time
 
 import matplotlib.pyplot as plt
 import mplfinance as mpf
+import seaborn as sns
 
 import pandas as pd
 
 from lib.stocks.db_map.map_interface import IMap
 from lib import database
-
+from lib import utils
 
 def draw_candles(db_filepath, pair, map: IMap):
     log = logging.getLogger(__name__)
@@ -55,3 +57,41 @@ def draw_tickers_and_candles(db_filepath, pair, map: IMap):
     )
 
     mpf.show()
+
+def read_order_book(db_filepath, pair, map: IMap):
+    log = logging.getLogger(__name__)
+    db = database.DB(db_filepath, map)
+    data_order_book = db.read_order_book_table(pair)
+
+    log.info(f"data_order_book: {data_order_book.info(verbose=True)}")
+
+    fig, ax = plt.subplots()
+    ax.set_xlabel("Price")
+    ax.set_ylabel("Quantity")
+
+    for index, row in data_order_book.iterrows():
+
+        ax.set_title(f"Order Book. {utils.datetime_to_ts(row['Time'])}")
+
+        ask_price = []
+        ask_qty = []
+        for a, a1 in row['Asks'].tolist():
+            ask_price.append(a)
+            ask_qty.append(a1)
+        bid_price = []
+        bid_qty = []
+        for a, a1 in row['Bids'].tolist():
+            bid_price.append(a)
+            bid_qty.append(a1)
+
+        ask_df = pd.DataFrame({'price': ask_price, 'quantity': ask_qty})
+        bid_df = pd.DataFrame({'price': bid_price, 'quantity': bid_qty})
+
+        sns.ecdfplot(x="price", weights="quantity", stat="count",
+                     data=ask_df, ax=ax, color="red")
+        sns.ecdfplot(x="price", weights="quantity", stat="count",
+                        complementary=True, data=bid_df, ax=ax, color="green")
+        # complementary=True allows reflects that lower bids are "better"
+
+        plt.pause(0.5)
+        ax.clear()

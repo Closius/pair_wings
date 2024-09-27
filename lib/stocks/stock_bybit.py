@@ -165,7 +165,14 @@ class StockBybit(IStock):
         # TODO: it doesnt return everything! probably pagination
         # It is not efficient but allow to use an universal DataCollector
         for candle in self.http.get_kline(**kargs)["result"]["list"]:
-            yield {x[0]: x[1] for x in zip(self.map.candle.get_db_names(), candle)}
+            nss = {}
+            for db_name, data in zip(self.map.candle.get_db_names(), candle):
+                if db_name == self.map.candle.Time.db_name:
+                    nss[db_name] = utils.ts_to_datetime(data)
+                else:
+                    nss[db_name] = data
+
+            yield nss
 
     def stream_ticker(self, pair, stop_event):
         self.log.info(f"Connecting to public Bybit ws stream ...")
@@ -179,8 +186,14 @@ class StockBybit(IStock):
             # reformat
             try:
                 message["data"].update({"ts": message["ts"]})
-                d = {x[1]: message["data"][x[0]]
-                     for x in list(zip(self.map.ticker.get_api_names(), self.map.ticker.get_db_names()))}
+                d = {}
+                for api_name, db_name in zip(self.map.ticker.get_api_names(), self.map.ticker.get_db_names()):
+                    if db_name == self.map.ticker.Time.db_name:
+                        d[db_name] = utils.ts_to_datetime(message["data"][api_name])
+                    else:
+                        d[db_name] = message["data"][api_name]
+
+
                 q.put(d)
             except Exception as ex:
                 self.log.exception(ex)
@@ -230,7 +243,7 @@ class StockBybit(IStock):
                 is_snapshot = True if message["type"] == "snapshot" else False
 
                 d = {}
-                d[self.map.order_book.Time.db_name] = message["ts"]
+                d[self.map.order_book.Time.db_name] = utils.ts_to_datetime(message["ts"])
 
                 handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Asks.api_name],
                                                     is_snapshot=is_snapshot,

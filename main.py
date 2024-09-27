@@ -25,7 +25,8 @@ def main():
     log.info("2 - Collect order book")
     log.info("3 - Collect candles")
     log.info("4 - Show data")
-    log.info("5 - Quit")
+    log.info("5 - Read order books")
+    log.info("6 - Quit")
     r = input()
     log.info(r)
     # stock = StockBybit(account_name="pair_wings_demo",
@@ -61,6 +62,8 @@ def main():
             map=map)
     elif r == "4":
         data_show.draw_candles(db_filepath, pair="BTCUSDT", map=map)
+    elif r == "5":
+        data_show.read_order_book(db_filepath, pair="BTCUSDT", map=map)
 
 
 if __name__ == "__main__":

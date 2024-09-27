@@ -6,6 +6,7 @@ import io
 import pandas as pd
 
 from lib.stocks.db_map.map_interface import IMap, _NDARRAY_DB_TYPE
+from lib import utils
 
 
 def numpy_to_sqlite(arr):
@@ -34,7 +35,7 @@ class DB:
         self.log = logging.getLogger(__name__)
         self.filepath = filepath
         self.map = map
-        self.con = sqlite3.connect(self.filepath)
+        self.con = sqlite3.connect(self.filepath, detect_types=sqlite3.PARSE_DECLTYPES)
         self.cur = self.con.cursor()
 
     def create_ticker_table(self, pair, recreate=False):
@@ -52,6 +53,9 @@ class DB:
         )
 
     def create_candle_table(self, pair, recreate=False):
+        """
+        A historical candles table. each row - the finished candle for current period
+        """
         if recreate:
             self.cur.execute(
                 f"""
@@ -64,6 +68,12 @@ class DB:
                 ({self.map.candle.get_names_types_for_DB()})
         """
         )
+
+    def create_candle_ticker_table(self, pair, recreate=False):
+        """
+        Candles which are collected from the database as fast as they receive FROM THE STREAMING
+        """
+        pass
 
     def create_order_book_table(self, pair, recreate=False):
         if recreate:
@@ -80,39 +90,42 @@ class DB:
         )
 
     def insert_ticker(self, pair, **kwargs):
-
-        cols = ",".join([f"{kwargs[x]}" for x in self.map.ticker.get_db_names()])
+        # preserve the order as in Map and DB
+        cols = [f"{kwargs[x]}" for x in self.map.ticker.get_db_names()]
+        q = ",".join(["?"] * len(self.map.ticker.get_db_names()))
         self.cur.execute(
             f"""
             INSERT INTO tickers_{pair} VALUES
-                ({cols})
-        """
+                ({q})
+        """, cols
         )
         self.con.commit()
 
-    def insert_candles(self, pair, **kwargs):
-
-        cols = ",".join([f"{kwargs[x]}" for x in self.map.candle.get_db_names()])
+    def insert_candle(self, pair, **kwargs):
+        """
+        Insert into the historical candles table. each row - the finished candle for current period
+        """
+        # preserve the order as in Map and DB
+        cols = [kwargs[x] for x in self.map.candle.get_db_names()]
+        q = ",".join(["?"] * len(self.map.candle.get_db_names()))
         self.cur.execute(
             f"""
             INSERT INTO candles_{pair} VALUES
-                ({cols})
-        """
+                ({q})
+        """, cols
         )
         self.con.commit()
 
     def insert_order_book(self, pair, **kwargs):
+        # preserve the order as in Map and DB
         cols_order = []
         for db_name in self.map.order_book.get_db_names():
-            if db_name == self.map.order_book.Time.db_name:
-                cols_order.append(str(kwargs[db_name]))
-            else:
-                cols_order.append(f"'{kwargs[db_name]}'")
-        cols = ",".join(cols_order)
+            cols_order.append(kwargs[db_name])
+        q = ",".join(["?"]*len(self.map.order_book.get_db_names()))
         self.cur.execute(f"""
             INSERT INTO order_book_{pair} VALUES
-                ({cols})
-        """)
+                ({q})
+        """, cols_order)
         self.con.commit()
 
     def read_ticker_table(self, pair, t_start=None, t_end=None):
@@ -134,7 +147,7 @@ class DB:
                 ORDER BY {self.map.ticker.Time.db_name}"""
             )
         df = pd.DataFrame(res.fetchall(), columns=self.map.ticker.get_db_names())
-        df[self.map.ticker.Time.db_name] = pd.to_datetime(df[self.map.ticker.Time.db_name].astype(int), unit='ms')
+        df[self.map.ticker.Time.db_name] = pd.to_datetime(df[self.map.ticker.Time.db_name], unit='ms')
         df.index = pd.DatetimeIndex(df[self.map.ticker.Time.db_name])
         # df.drop(columns=[self.map.ticker.Time.db_name])
         return df
@@ -158,7 +171,7 @@ class DB:
                 ORDER BY {self.map.candle.Time.db_name}"""
             )
         df = pd.DataFrame(res.fetchall(), columns=self.map.candle.get_db_names())
-        df[self.map.candle.Time.db_name] = pd.to_datetime(df[self.map.candle.Time.db_name].astype(int), unit='ms')
+        df[self.map.candle.Time.db_name] = pd.to_datetime(df[self.map.candle.Time.db_name], unit='ms')
         df.index = pd.DatetimeIndex(df[self.map.candle.Time.db_name])
         # df.drop(columns=[self.map.candle.Time.db_name])
         return df
@@ -182,7 +195,7 @@ class DB:
                 ORDER BY {self.map.order_book.Time.db_name}"""
             )
         df = pd.DataFrame(res.fetchall(), columns=self.map.order_book.get_db_names())
-        df[self.map.order_book.Time.db_name] = pd.to_datetime(df[self.map.order_book.Time.db_name].astype(int), unit='ms')
+        df[self.map.order_book.Time.db_name] = pd.to_datetime(df[self.map.order_book.Time.db_name], unit='ms')
         df.index = pd.DatetimeIndex(df[self.map.order_book.Time.db_name])
         # df.drop(columns=[self.map.order_book.Time.db_name])
         return df

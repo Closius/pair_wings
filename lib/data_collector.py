@@ -30,7 +30,7 @@ class DataCollector:
                 pair=pair,
                 **message
             )
-            self.log.info(f'{utils.ts_to_text(message[self.map.ticker.Time.db_name])} | '
+            self.log.info(f'{utils.datetime_to_ts(message[self.map.ticker.Time.db_name])} | '
                           f'{message[self.map.ticker.MarkPrice.db_name]}')
 
         self.log.info(f"collect_tickers Finished.")
@@ -49,7 +49,7 @@ class DataCollector:
         self.db.create_candle_table(pair, recreate)
 
         for candle in self.stock.get_history_tohlcv(pair, interval, start, end):
-            self.db.insert_candles(
+            self.db.insert_candle(
                 pair=pair,
                 **candle
             )
@@ -66,7 +66,7 @@ class DataCollector:
                 pair=pair,
                 **order_book
             )
-            self.log.info(f'{utils.ts_to_text(order_book[self.map.order_book.Time.db_name])}')
+            self.log.info(f'{utils.datetime_to_ts(order_book[self.map.order_book.Time.db_name])}')
 
 
         self.log.info(f"collect_stream_order_book Finished.")
