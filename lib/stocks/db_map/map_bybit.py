@@ -1,4 +1,4 @@
-from lib.stocks.db_map.map_interface import ITicker, ICandle, IOrderBook, IMap
+from lib.stocks.db_map.map_interface import ITicker, ICandle, ICandleTicker, IOrderBook, IMap
 
 
 class TickerBybit(ITicker):
@@ -24,6 +24,20 @@ class CandleBybit(ICandle):
         self.Turnover.api_name = "turnover"
 
 
+class CandleTickerBybit(ICandleTicker):
+    def __init__(self):
+        super().__init__()
+        self.Time.api_name = "timestamp"
+        self.Start.api_name = "start"
+        self.End.api_name = "end"
+        self.Open.api_name = "open"
+        self.High.api_name = "high"
+        self.Low.api_name = "low"
+        self.Close.api_name = "close"
+        self.Volume.api_name = "volume"
+        self.Turnover.api_name = "turnover"
+
+
 class OrderBookBybit(IOrderBook):
     def __init__(self):
         super().__init__()
@@ -37,4 +51,5 @@ class MapBybit(IMap):
         super().__init__()
         self.ticker = TickerBybit()
         self.candle = CandleBybit()
+        self.candle_ticker = CandleTickerBybit()
         self.order_book = OrderBookBybit()

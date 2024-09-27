@@ -174,6 +174,41 @@ class StockBybit(IStock):
 
             yield nss
 
+
+    def stream_tohlcv(self, pair, interval, stop_event):
+        """
+        https://bybit-exchange.github.io/docs/v5/websocket/public/kline
+        """
+        self.log.info(f"Connecting to public Bybit ws stream ...")
+        self.ws = WebSocket(
+            testnet=True,  # testnet gives wrong values! at least on HTTP
+            channel_type="linear"
+        )
+        q = queue.Queue()
+
+        def handle_kline(message):
+            # reformat
+            try:
+                data = message["data"][0]
+                d = {}
+                for api_name, db_name in zip(self.map.candle_ticker.get_api_names(), self.map.candle_ticker.get_db_names()):
+                    if db_name in [self.map.candle_ticker.Time.db_name,
+                                   self.map.candle_ticker.Start.db_name,
+                                   self.map.candle_ticker.End.db_name]:
+                        d[db_name] = utils.ts_to_datetime(data[api_name])
+                    else:
+                        d[db_name] = data[api_name]
+
+                q.put(d)
+            except Exception as ex:
+                self.log.exception(ex)
+
+        self.ws.kline_stream(interval, pair, handle_kline)
+
+        while not stop_event.is_set():
+            yield q.get(block=True)
+
+
     def stream_ticker(self, pair, stop_event):
         self.log.info(f"Connecting to public Bybit ws stream ...")
         self.ws = WebSocket(

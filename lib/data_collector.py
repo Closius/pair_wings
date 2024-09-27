@@ -57,6 +57,22 @@ class DataCollector:
         self.log.info(f"collect_candles Finished.")
 
 
+    def collect_stream_candles_ticker(self, pair, interval, stop_event, recreate=False):
+        self.log.info(f"collect_stream_candles_ticker {pair} {interval}")
+        self.db.create_candle_ticker_table(pair, interval, recreate)
+
+        for message in self.stock.stream_tohlcv(pair, interval, stop_event):
+            self.db.insert_candle_ticker(
+                pair=pair,
+                interval=interval,
+                **message
+            )
+            self.log.info(f'{utils.datetime_to_ts(message[self.map.candle_ticker.Time.db_name])} | '
+                          f'{message[self.map.candle_ticker.Close.db_name]}')
+
+        self.log.info(f"collect_stream_candles_ticker Finished.")
+
+
     def collect_stream_order_book(self, pair, stop_event, recreate=False):
         self.log.info(f"collect_stream_order_book {pair}")
         self.db.create_order_book_table(pair, recreate)
@@ -100,6 +116,35 @@ def collect_stream_tickers(stock: IStock, map: IMap, filepath, pair, recreate):
         except Exception as exc:
             log.exception(exc)
 
+
+def collect_stream_candles_ticker(stock: IStock, map: IMap, filepath, pair, interval, recreate):
+    def _func(_stock, _filepath, _pair, _interval, _recreate, _stop_event):
+        try:
+            dc = DataCollector(_stock, _filepath, map)
+            dc.collect_stream_candles_ticker(_pair, _interval, _stop_event, _recreate)
+        except Exception as ex:
+            logging.getLogger(__name__).exception(ex)
+    log = logging.getLogger(__name__)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        event = threading.Event()
+        future = executor.submit(
+            _func,
+            _stock=stock,
+            _filepath=filepath,
+            _pair=pair,
+            _interval=interval,
+            _recreate=recreate,
+            _stop_event=event,
+        )
+        log.info("==========================")
+        log.info("Press Enter to Stop collection")
+        input()
+        event.set()
+        log.info("Interrupted")
+        try:
+            future.result()
+        except Exception as exc:
+            log.exception(exc)
 
 def collect_history_candles(stock: IStock, map: IMap, filepath, recreate, pair, interval, start, end=None):
     """

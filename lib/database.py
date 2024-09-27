@@ -69,11 +69,22 @@ class DB:
         """
         )
 
-    def create_candle_ticker_table(self, pair, recreate=False):
+    def create_candle_ticker_table(self, pair, interval, recreate=False):
         """
         Candles which are collected from the database as fast as they receive FROM THE STREAMING
         """
-        pass
+        if recreate:
+            self.cur.execute(
+                f"""
+                DROP TABLE IF EXISTS candles_ticker_{pair}_{interval}
+            """
+            )
+        self.cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS candles_ticker_{pair}_{interval}
+                ({self.map.candle_ticker.get_names_types_for_DB()})
+        """
+        )
 
     def create_order_book_table(self, pair, recreate=False):
         if recreate:
@@ -111,6 +122,18 @@ class DB:
         self.cur.execute(
             f"""
             INSERT INTO candles_{pair} VALUES
+                ({q})
+        """, cols
+        )
+        self.con.commit()
+
+    def insert_candle_ticker(self, pair, interval, **kwargs):
+        # preserve the order as in Map and DB
+        cols = [f"{kwargs[x]}" for x in self.map.candle_ticker.get_db_names()]
+        q = ",".join(["?"] * len(self.map.candle_ticker.get_db_names()))
+        self.cur.execute(
+            f"""
+            INSERT INTO candles_ticker_{pair}_{interval} VALUES
                 ({q})
         """, cols
         )
@@ -174,6 +197,32 @@ class DB:
         df[self.map.candle.Time.db_name] = pd.to_datetime(df[self.map.candle.Time.db_name], unit='ms')
         df.index = pd.DatetimeIndex(df[self.map.candle.Time.db_name])
         # df.drop(columns=[self.map.candle.Time.db_name])
+        return df
+
+    def read_candle_ticker_table(self, pair, interval, t_start=None, t_end=None):
+        if t_start and t_end:
+            res = self.cur.execute(
+                f"""SELECT * FROM candles_ticker_{pair}_{interval} 
+                WHERE {self.map.candle_ticker.Time.db_name} >= {t_start} AND time <= {t_end}
+                ORDER BY {self.map.candle_ticker.Time.db_name}"""
+            )
+        elif t_start:
+            res = self.cur.execute(
+                f"""SELECT * FROM candles_ticker_{pair}_{interval} 
+                WHERE {self.map.candle_ticker.Time.db_name} >= {t_start}
+                ORDER BY {self.map.candle_ticker.Time.db_name}"""
+            )
+        else:
+            res = self.cur.execute(
+                f"""SELECT * FROM candles_ticker_{pair}_{interval} 
+                ORDER BY {self.map.candle_ticker.Time.db_name}"""
+            )
+        df = pd.DataFrame(res.fetchall(), columns=self.map.candle_ticker.get_db_names())
+        df[self.map.candle_ticker.Time.db_name] = pd.to_datetime(df[self.map.candle_ticker.Time.db_name], unit='ms')
+        df[self.map.candle_ticker.Start.db_name] = pd.to_datetime(df[self.map.candle_ticker.Start.db_name], unit='ms')
+        df[self.map.candle_ticker.End.db_name] = pd.to_datetime(df[self.map.candle_ticker.End.db_name], unit='ms')
+        df.index = pd.DatetimeIndex(df[self.map.candle_ticker.Time.db_name])
+        # df.drop(columns=[self.map.order_book.Time.db_name])
         return df
 
     def read_order_book_table(self, pair, t_start=None, t_end=None):

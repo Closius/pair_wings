@@ -95,3 +95,12 @@ def read_order_book(db_filepath, pair, map: IMap):
 
         plt.pause(0.5)
         ax.clear()
+
+def read_stream_candles(db_filepath, pair, interval, map: IMap):
+    log = logging.getLogger(__name__)
+    db = database.DB(db_filepath, map)
+    df = db.read_candle_ticker_table(pair, interval)
+
+    log.info(df.info(verbose=True))
+    # log.info(df)
+

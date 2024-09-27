@@ -62,10 +62,10 @@ class IStock:
         """
         raise NotImplemented()
 
-    def stream_tohlcv(self, pair, intervals, stop_event: threading.Event):
+    def stream_tohlcv(self, pair, interval, stop_event: threading.Event):
         """
 
-        To stream all requested intervals in one item or yild iterator
+        To stream requested interval in iterator
 
         :param pair:
         :param stop_event: to stop streaming

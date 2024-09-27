@@ -23,10 +23,12 @@ def main():
     log.info("Choose your destiny:")
     log.info("1 - Collect tickers")
     log.info("2 - Collect order book")
-    log.info("3 - Collect candles")
-    log.info("4 - Show data")
-    log.info("5 - Read order books")
-    log.info("6 - Quit")
+    log.info("3 - Collect stream candles")
+    log.info("4 - Collect candles")
+    log.info("5 - Show data")
+    log.info("6 - Read order books")
+    log.info("7 - Read stream candles")
+    log.info("8 - Quit")
     r = input()
     log.info(r)
     # stock = StockBybit(account_name="pair_wings_demo",
@@ -51,7 +53,16 @@ def main():
             recreate=True,
             map=map)
 
-    elif r == "3":
+    if r == "3":
+        data_collector.collect_stream_candles_ticker(
+            stock=stock,
+            filepath=db_filepath,
+            pair="BTCUSDT",
+            interval="5",
+            recreate=True,
+            map=map)
+
+    elif r == "4":
         data_collector.collect_history_candles(
             stock=stock,
             filepath=db_filepath,
@@ -60,11 +71,12 @@ def main():
             interval="5",
             start='16.09.2024 19:00:00,00',
             map=map)
-    elif r == "4":
-        data_show.draw_candles(db_filepath, pair="BTCUSDT", map=map)
     elif r == "5":
+        data_show.draw_candles(db_filepath, pair="BTCUSDT", map=map)
+    elif r == "6":
         data_show.read_order_book(db_filepath, pair="BTCUSDT", map=map)
-
+    elif r == "7":
+        data_show.read_stream_candles(db_filepath, pair="BTCUSDT", interval="5", map=map)
 
 if __name__ == "__main__":
     main()

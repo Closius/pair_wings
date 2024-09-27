@@ -61,8 +61,27 @@ class ITicker(_base):
 
 
 class ICandle(_base):
+    """
+    Historical candles. Finished
+    """
     def __init__(self):
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
+        self.Open = _Field("Open", "REAL", NotImplemented)
+        self.High = _Field("High", "REAL", NotImplemented)
+        self.Low = _Field("Low", "REAL", NotImplemented)
+        self.Close = _Field("Close", "REAL", NotImplemented)
+        self.Volume = _Field("Volume", "REAL", NotImplemented)
+        self.Turnover = _Field("Turnover", "REAL", NotImplemented)
+
+
+class ICandleTicker(_base):
+    """
+    Stream of candles. Finished
+    """
+    def __init__(self):
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
+        self.Start = _Field("Start", "TIMESTAMP", NotImplemented)  # when the candle starts
+        self.End = _Field("End", "TIMESTAMP", NotImplemented)
         self.Open = _Field("Open", "REAL", NotImplemented)
         self.High = _Field("High", "REAL", NotImplemented)
         self.Low = _Field("Low", "REAL", NotImplemented)
@@ -82,4 +101,5 @@ class IMap:
     def __init__(self):
         self.ticker = ITicker()
         self.candle = ICandle()
+        self.candle_ticker = ICandle()
         self.order_book = IOrderBook()
