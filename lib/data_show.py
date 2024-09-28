@@ -1,5 +1,4 @@
 import logging
-import time
 
 import matplotlib.pyplot as plt
 import mplfinance as mpf
@@ -86,6 +85,10 @@ def read_order_book(db_filepath, pair, map: IMap):
 
         ask_df = pd.DataFrame({'price': ask_price, 'quantity': ask_qty})
         bid_df = pd.DataFrame({'price': bid_price, 'quantity': bid_qty})
+
+        # log.info(f"ask_df: {ask_df}")
+        # log.info(f"bid_df: {bid_df}")
+        # log.info("====================================================")
 
         sns.ecdfplot(x="price", weights="quantity", stat="count",
                      data=ask_df, ax=ax, color="red")

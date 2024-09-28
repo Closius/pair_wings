@@ -1,5 +1,7 @@
+import logging
 import queue
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from lib.stocks.db_map.map_interface import IMap
 
@@ -32,9 +34,20 @@ class IStock:
     """
 
     def __init__(self, map: IMap):
+        self.log = logging.getLogger(__name__)
         # for example to notify that the order has been fulfilled
         self.notifications_queue = queue.Queue()
         self.map = map
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=None)
+
+    def subscribe_on_stream(self, stream_function, stream_function_kwargs, handler, handler_kwargs=None):
+        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
+        future = self.thread_pool_executor.submit(
+            stream_function,
+            handler=handler,
+            handler_kwargs=handler_kwargs,
+            **stream_function_kwargs
+        )
 
     def open_SHORT(self, uid, price, amount, stopLimit, takeProfit, limit=None):
         raise NotImplemented()
@@ -53,7 +66,7 @@ class IStock:
         raise NotImplemented()
 
     # TODO create stream decorator
-    def stream_ticker(self, pair, stop_event: threading.Event):
+    def stream_ticker(self, pair, handler, handler_kwargs, stop_event: threading.Event):
         """
 
         :param pair:
@@ -62,7 +75,7 @@ class IStock:
         """
         raise NotImplemented()
 
-    def stream_tohlcv(self, pair, interval, stop_event: threading.Event):
+    def stream_tohlcv(self, pair, interval, handler, handler_kwargs, stop_event: threading.Event):
         """
 
         To stream requested interval in iterator
@@ -73,7 +86,7 @@ class IStock:
         """
         raise NotImplemented()
 
-    def stream_order_book(self, pair, stop_event: threading.Event):
+    def stream_order_book(self, pair, handler, handler_kwargs, stop_event: threading.Event):
         """
 
         :param pair:
@@ -82,7 +95,7 @@ class IStock:
         """
         raise NotImplemented()
 
-    def stream_order_status(self, pair, stop_event: threading.Event):
+    def stream_order_status(self, pair, handler, handler_kwargs, stop_event: threading.Event):
         """
 
         :param pair:

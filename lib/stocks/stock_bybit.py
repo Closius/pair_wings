@@ -1,9 +1,5 @@
-import logging
-import queue
-
 import json5
 import numpy as np
-import pandas as pd
 
 from pybit.unified_trading import WebSocket
 from pybit.unified_trading import HTTP
@@ -11,18 +7,21 @@ from pybit.unified_trading import HTTP
 from lib.stocks.stock_interface import IStock
 from lib import utils
 
-from lib.stocks.db_map.map_interface import IMap, _NDARRAY_DB_TYPE
+from lib.stocks.db_map.map_interface import IMap
 
 
 class StockBybit(IStock):
 
     def __init__(self, map: IMap, account_name=None, api_secrets_file=None, settings_file=None):
-        self.log = logging.getLogger(__name__)
+        super().__init__(map=map)
         self.log.info(f"Connecting to public Bybit ...")
         self.http = HTTP(demo=True)
         self.http_private = None
-        self.ws = None
-        self.map = map
+        self.ws = WebSocket(
+            testnet=True,  # testnet gives wrong values! at least on HTTP
+            channel_type="linear"
+        )
+        self.ws_private = None
         if account_name:
             self.log.info(f"Connecting to private Bybit: {account_name} ...")
 
@@ -41,8 +40,6 @@ class StockBybit(IStock):
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
                 demo=True,
             )
-
-        super().__init__(map=map)
 
     def _value_to_qty(self, value, symbol):
         """
@@ -175,16 +172,11 @@ class StockBybit(IStock):
             yield nss
 
 
-    def stream_tohlcv(self, pair, interval, stop_event):
+    def stream_tohlcv(self, pair, interval, stop_event, handler, handler_kwargs=None):
         """
         https://bybit-exchange.github.io/docs/v5/websocket/public/kline
         """
-        self.log.info(f"Connecting to public Bybit ws stream ...")
-        self.ws = WebSocket(
-            testnet=True,  # testnet gives wrong values! at least on HTTP
-            channel_type="linear"
-        )
-        q = queue.Queue()
+        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
 
         def handle_kline(message):
             # reformat
@@ -199,23 +191,18 @@ class StockBybit(IStock):
                     else:
                         d[db_name] = data[api_name]
 
-                q.put(d)
+                handler(d, **handler_kwargs)
             except Exception as ex:
                 self.log.exception(ex)
 
         self.ws.kline_stream(interval, pair, handle_kline)
 
         while not stop_event.is_set():
-            yield q.get(block=True)
+            pass
 
 
-    def stream_ticker(self, pair, stop_event):
-        self.log.info(f"Connecting to public Bybit ws stream ...")
-        self.ws = WebSocket(
-            testnet=True,  # testnet gives wrong values! at least on HTTP
-            channel_type="linear"
-        )
-        q = queue.Queue()
+    def stream_ticker(self, pair, stop_event, handler, handler_kwargs=None):
+        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
 
         def handle_ticker(message):
             # reformat
@@ -228,28 +215,21 @@ class StockBybit(IStock):
                     else:
                         d[db_name] = message["data"][api_name]
 
-
-                q.put(d)
+                handler(d, **handler_kwargs)
             except Exception as ex:
                 self.log.exception(ex)
 
         self.ws.ticker_stream(pair, handle_ticker)
 
         while not stop_event.is_set():
-            yield q.get(block=True)
+            pass
 
-    def stream_order_book(self, pair, stop_event):
+
+    def stream_order_book(self, pair, stop_event, handler, handler_kwargs=None):
         """
             https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
         """
-
-        self.log.info(f"Connecting to public Bybit ws stream ...")
-        self.ws = WebSocket(
-            testnet=True,  # testnet gives wrong values! at least on HTTP
-            channel_type="linear"
-        )
-
-        stream = queue.Queue()
+        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
 
         def handle_ticker(message):
             handle_ticker.asks_d_snapshot = None
@@ -296,11 +276,11 @@ class StockBybit(IStock):
                 else:
                     d[self.map.order_book.Bids.db_name] = np.array([[p,v] for p,v in handle_ticker.bids_d_snapshot.items()])
 
-                stream.put(d)
+                handler(d, **handler_kwargs)
             except Exception as ex:
                 self.log.exception(ex)
 
         self.ws.orderbook_stream(depth=50, symbol=pair, callback=handle_ticker)
 
         while not stop_event.is_set():
-            yield stream.get(block=True)
+            pass
