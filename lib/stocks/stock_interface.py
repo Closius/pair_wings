@@ -78,8 +78,6 @@ class IStock:
     def stream_tohlcv(self, pair, interval, handler, handler_kwargs, stop_event: threading.Event):
         """
 
-        To stream requested interval in iterator
-
         :param pair:
         :param stop_event: to stop streaming
         :return: interator

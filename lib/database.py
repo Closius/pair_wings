@@ -25,7 +25,7 @@ def sqlite_to_numpy(text):
     return np.load(out)
 
 
-class DB:
+class DB(metaclass=utils.Singleton):
     def __init__(self, filepath, map: IMap):
         # Converts np.array to TEXT when inserting
         sqlite3.register_adapter(np.ndarray, numpy_to_sqlite)
@@ -33,6 +33,7 @@ class DB:
         sqlite3.register_converter(_NDARRAY_DB_TYPE, sqlite_to_numpy)
 
         self.log = logging.getLogger(__name__)
+        self.log.info("Database init")
         self.filepath = filepath
         self.map = map
         self.con = sqlite3.connect(self.filepath, detect_types=sqlite3.PARSE_DECLTYPES)
