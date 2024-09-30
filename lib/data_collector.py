@@ -31,10 +31,9 @@ class DataCollector:
             self.log.info(f'ticker {utils.datetime_to_ts(message[self.map.ticker.Time.db_name])} | '
                           f'{message[self.map.ticker.MarkPrice.db_name]}')
 
-        self.stock.subscribe_on_stream(stream_function=self.stock.stream_ticker,
-                                       stream_function_kwargs={"pair": pair,
-                                                               "stop_event": stop_event},
-                                       handler=handler)
+        self.stock.stream_ticker(handler=handler, handler_kwargs={}, stop_event=stop_event,
+                                 pair=pair)
+
 
     def collect_history_candles(self, pair, interval, start, end=None, recreate=False):
         """
@@ -71,11 +70,9 @@ class DataCollector:
             self.log.info(f'candle {utils.datetime_to_ts(message[self.map.candle_ticker.Time.db_name])} | '
                           f'{message[self.map.candle_ticker.Close.db_name]}')
 
-        self.stock.subscribe_on_stream(stream_function=self.stock.stream_tohlcv,
-                                       stream_function_kwargs={"pair": pair,
-                                                               "interval": interval,
-                                                               "stop_event": stop_event},
-                                       handler=handler)
+        self.stock.stream_tohlcv(handler=handler, handler_kwargs={}, stop_event=stop_event,
+                                 pair=pair, interval=interval)
+
 
     def collect_stream_order_book(self, pair, stop_event, recreate=False):
         self.log.info(f"collect_stream_order_book {pair}")
@@ -89,7 +86,5 @@ class DataCollector:
             )
             self.log.info(f'order book {utils.datetime_to_ts(message[self.map.order_book.Time.db_name])}')
 
-        self.stock.subscribe_on_stream(stream_function=self.stock.stream_order_book,
-                                       stream_function_kwargs={"pair": pair,
-                                                               "stop_event": stop_event},
-                                       handler=handler)
+        self.stock.stream_order_book(handler=handler, handler_kwargs={}, stop_event=stop_event,
+                                 pair=pair)

@@ -40,14 +40,26 @@ class IStock:
         self.map = map
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=None)
 
-    def subscribe_on_stream(self, stream_function, stream_function_kwargs, handler, handler_kwargs=None):
-        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
-        future = self.thread_pool_executor.submit(
-            stream_function,
-            handler=handler,
-            handler_kwargs=handler_kwargs,
-            **stream_function_kwargs
-        )
+    def stream_decorator(func):
+        """
+        Makes the function non-blocking
+        """
+
+        def wrapper(self, handler, handler_kwargs, stop_event, **kwargs):
+            handler_kwargs = {} if handler_kwargs is None else handler_kwargs
+            future = self.thread_pool_executor.submit(
+                func,
+                self=self,
+                handler=handler,
+                handler_kwargs=handler_kwargs,
+                stop_event=stop_event,
+                **kwargs
+            )
+
+        return wrapper
+
+    stream_decorator = staticmethod(stream_decorator)
+
 
     def open_SHORT(self, uid, price, amount, stopLimit, takeProfit, limit=None):
         raise NotImplemented()
@@ -65,8 +77,9 @@ class IStock:
         """
         raise NotImplemented()
 
-    # TODO create stream decorator
-    def stream_ticker(self, pair, handler, handler_kwargs, stop_event: threading.Event):
+    @stream_decorator
+    def stream_ticker(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
+                      pair):
         """
 
         :param pair:
@@ -75,7 +88,9 @@ class IStock:
         """
         raise NotImplemented()
 
-    def stream_tohlcv(self, pair, interval, handler, handler_kwargs, stop_event: threading.Event):
+    @stream_decorator
+    def stream_tohlcv(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
+                      pair, interval):
         """
 
         :param pair:
@@ -84,7 +99,9 @@ class IStock:
         """
         raise NotImplemented()
 
-    def stream_order_book(self, pair, handler, handler_kwargs, stop_event: threading.Event):
+    @stream_decorator
+    def stream_order_book(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
+                          pair):
         """
 
         :param pair:
@@ -93,7 +110,9 @@ class IStock:
         """
         raise NotImplemented()
 
-    def stream_order_status(self, pair, handler, handler_kwargs, stop_event: threading.Event):
+    @stream_decorator
+    def stream_order_status(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
+                            pair):
         """
 
         :param pair:

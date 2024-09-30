@@ -171,12 +171,11 @@ class StockBybit(IStock):
 
             yield nss
 
-
-    def stream_tohlcv(self, pair, interval, stop_event, handler, handler_kwargs=None):
+    @IStock.stream_decorator
+    def stream_tohlcv(self, handler, handler_kwargs, stop_event, pair, interval):
         """
         https://bybit-exchange.github.io/docs/v5/websocket/public/kline
         """
-        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
 
         def handle_kline(message):
             # reformat
@@ -200,9 +199,8 @@ class StockBybit(IStock):
         while not stop_event.is_set():
             pass
 
-
-    def stream_ticker(self, pair, stop_event, handler, handler_kwargs=None):
-        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
+    @IStock.stream_decorator
+    def stream_ticker(self, handler, handler_kwargs, stop_event, pair):
 
         def handle_ticker(message):
             # reformat
@@ -224,12 +222,11 @@ class StockBybit(IStock):
         while not stop_event.is_set():
             pass
 
-
-    def stream_order_book(self, pair, stop_event, handler, handler_kwargs=None):
+    @IStock.stream_decorator
+    def stream_order_book(self, handler, handler_kwargs, stop_event, pair):
         """
             https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
         """
-        handler_kwargs = {} if handler_kwargs is None else handler_kwargs
 
         def handle_ticker(message):
             handle_ticker.asks_d_snapshot = None
