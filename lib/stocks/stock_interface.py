@@ -31,6 +31,8 @@ class StockNotification:
 class IStock:
     """
         Methods return data according to the implementation of IMap (DB names)
+
+        only trading on derivatives (futures)!
     """
 
     def __init__(self, map: IMap):
