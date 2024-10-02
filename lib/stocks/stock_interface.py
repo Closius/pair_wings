@@ -73,7 +73,23 @@ class IStock:
     def get_history_tohlcv(self, pair, interval, start, end=None):
         """
 
-        :return: interator of dicts IMap.candle
+        :param pair: "BTCUSDT"
+        :param interval: "5", "10", "30", ...
+        :param start: "16.09.2024 19:00:00,00" - early date
+        :param end: "16.09.2024 19:00:00,00" or None for the current date - later date
+
+        :return [
+                    {
+                        'Time': datetime.datetime(2024, 9, 16, 19, 15),
+                        'Open': '57566.6',
+                        'High': '57718.8',
+                        'Low': '57535.1',
+                        'Close': '57569.7',
+                        'Volume': '614.993',
+                        'Turnover': '35447184.1698'
+                    },
+                    ...
+                ]
         """
         raise NotImplemented()
 
@@ -81,10 +97,16 @@ class IStock:
     def stream_ticker(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
                       pair):
         """
-
-        :param pair:
+        :param pair: "BTCUSDT"
         :param stop_event: to stop streaming
-        :return: interator of dicts IMap.ticker
+        :return to `handler` {
+                    'Time': datetime.datetime(2024, 10, 2, 22, 54, 17, 928000),
+                    'MarkPrice': '3259.94',
+                    'Ask1Size': '0.155',
+                    'Bid1Size': '4199.144',
+                    'OpenInterest': '1224249.628',
+                    'OpenInterestValue': '3990980332.30'
+                 }
         """
         raise NotImplemented()
 
@@ -93,9 +115,19 @@ class IStock:
                       pair, interval):
         """
 
-        :param pair:
+        :param pair: "BTCUSDT"
         :param stop_event: to stop streaming
-        :return: interator
+        :return to `handler` {
+                    'Time': datetime.datetime(2024, 10, 2, 23, 20, 41, 655000),
+                    'Start': datetime.datetime(2024, 10, 2, 23, 20),
+                    'End': datetime.datetime(2024, 10, 2, 23, 24, 59, 999000),
+                    'Open': '55239.6',
+                    'High': '55440',
+                    'Low': '53750',
+                    'Close': '55440',
+                    'Volume': '2382.393',
+                    'Turnover': '132078946.7517'
+                }
         """
         raise NotImplemented()
 
@@ -104,9 +136,13 @@ class IStock:
                           pair):
         """
 
-        :param pair:
+        :param pair: "BTCUSDT"
         :param stop_event: to stop streaming
-        :return: interator of dicts IMap.order_book
+        :return to `handler` {
+                    'Time': datetime.datetime(2024, 10, 2, 23, 20, 39, 873000),
+                    'Asks': np.array(shape=(50, 2)),  # [price, volume], order: price lower -> higher
+                    'Bids': np.array(shape=(50, 2)),  # [price, volume], order: price higher -> lower
+                }
         """
         raise NotImplemented()
 
