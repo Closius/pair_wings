@@ -5,7 +5,8 @@ import io
 
 import pandas as pd
 
-from lib.stocks.db_map.map_interface import IMap, _NDARRAY_DB_TYPE
+from lib.stocks.db_map.map_interface import (
+    IMap, IMap, ITicker, ICandle, ICandleTicker, IOrderBook, _NDARRAY_DB_TYPE)
 from lib import utils
 
 
@@ -101,9 +102,9 @@ class DB(metaclass=utils.Singleton):
         """
         )
 
-    def insert_ticker(self, pair, **kwargs):
+    def insert_ticker(self, pair, obj: ITicker):
         # preserve the order as in Map and DB
-        cols = [f"{kwargs[x]}" for x in self.map.ticker.get_db_names()]
+        cols = [getattr(obj, x.db_name) for x in self.map.ticker.init_fields.values()]
         q = ",".join(["?"] * len(self.map.ticker.get_db_names()))
         self.cur.execute(
             f"""
@@ -113,12 +114,12 @@ class DB(metaclass=utils.Singleton):
         )
         self.con.commit()
 
-    def insert_candle(self, pair, **kwargs):
+    def insert_candle(self, pair, obj: ICandle):
         """
         Insert into the historical candles table. each row - the finished candle for current period
         """
         # preserve the order as in Map and DB
-        cols = [kwargs[x] for x in self.map.candle.get_db_names()]
+        cols = [getattr(obj, x.db_name) for x in self.map.candle.init_fields.values()]
         q = ",".join(["?"] * len(self.map.candle.get_db_names()))
         self.cur.execute(
             f"""
@@ -128,9 +129,9 @@ class DB(metaclass=utils.Singleton):
         )
         self.con.commit()
 
-    def insert_candle_ticker(self, pair, interval, **kwargs):
+    def insert_candle_ticker(self, pair, interval, obj: ICandleTicker):
         # preserve the order as in Map and DB
-        cols = [f"{kwargs[x]}" for x in self.map.candle_ticker.get_db_names()]
+        cols = [getattr(obj, x.db_name) for x in self.map.candle_ticker.init_fields.values()]
         q = ",".join(["?"] * len(self.map.candle_ticker.get_db_names()))
         self.cur.execute(
             f"""
@@ -140,16 +141,14 @@ class DB(metaclass=utils.Singleton):
         )
         self.con.commit()
 
-    def insert_order_book(self, pair, **kwargs):
+    def insert_order_book(self, pair, obj: IOrderBook):
         # preserve the order as in Map and DB
-        cols_order = []
-        for db_name in self.map.order_book.get_db_names():
-            cols_order.append(kwargs[db_name])
+        cols = [getattr(obj, x.db_name) for x in self.map.order_book.init_fields.values()]
         q = ",".join(["?"]*len(self.map.order_book.get_db_names()))
         self.cur.execute(f"""
             INSERT INTO order_book_{pair} VALUES
                 ({q})
-        """, cols_order)
+        """, cols)
         self.con.commit()
 
     def read_ticker_table(self, pair, t_start=None, t_end=None):

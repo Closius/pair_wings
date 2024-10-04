@@ -7,7 +7,7 @@ from pybit.unified_trading import HTTP
 from lib.stocks.stock_interface import IStock
 from lib import utils
 
-from lib.stocks.db_map.map_interface import IMap
+from lib.stocks.db_map.map_interface import IMap, ITicker, ICandle, ICandleTicker, IOrderBook
 
 
 class StockBybit(IStock):
@@ -162,14 +162,14 @@ class StockBybit(IStock):
         # TODO: it doesnt return everything! probably pagination
         # It is not efficient but allow to use an universal DataCollector
         for candle in self.http.get_kline(**kargs)["result"]["list"]:
-            nss = {}
-            for db_name, data in zip(self.map.candle.get_db_names(), candle):
-                if db_name == self.map.candle.Time.db_name:
-                    nss[db_name] = utils.ts_to_datetime(data)
+            response = ICandle()
+            for (k,v), data in zip(self.map.candle.init_fields.items(), candle):
+                if v.db_name == self.map.candle.Time.db_name:
+                    setattr(response, k, utils.ts_to_datetime(data))
                 else:
-                    nss[db_name] = data
+                    setattr(response, k, data)
 
-            yield nss
+            yield response
 
     @IStock.stream_decorator
     def stream_tohlcv(self, handler, handler_kwargs, stop_event, pair, interval):
@@ -181,16 +181,16 @@ class StockBybit(IStock):
             # reformat
             try:
                 data = message["data"][0]
-                d = {}
-                for api_name, db_name in zip(self.map.candle_ticker.get_api_names(), self.map.candle_ticker.get_db_names()):
-                    if db_name in [self.map.candle_ticker.Time.db_name,
+                response = ICandleTicker()
+                for k, v in self.map.candle_ticker.init_fields.items():
+                    if v.db_name in [self.map.candle_ticker.Time.db_name,
                                    self.map.candle_ticker.Start.db_name,
                                    self.map.candle_ticker.End.db_name]:
-                        d[db_name] = utils.ts_to_datetime(data[api_name])
+                        setattr(response, k, utils.ts_to_datetime(data[v.api_name]))
                     else:
-                        d[db_name] = data[api_name]
+                        setattr(response, k, data[v.api_name])
 
-                handler(d, **handler_kwargs)
+                handler(response, **handler_kwargs)
             except Exception as ex:
                 self.log.exception(ex)
 
@@ -206,14 +206,14 @@ class StockBybit(IStock):
             # reformat
             try:
                 message["data"].update({"ts": message["ts"]})
-                d = {}
-                for api_name, db_name in zip(self.map.ticker.get_api_names(), self.map.ticker.get_db_names()):
-                    if db_name == self.map.ticker.Time.db_name:
-                        d[db_name] = utils.ts_to_datetime(message["data"][api_name])
+                response = ITicker()
+                for k, v in self.map.ticker.init_fields.items():
+                    if v.db_name == self.map.ticker.Time.db_name:
+                        setattr(response, k, utils.ts_to_datetime(message["data"][v.api_name]))
                     else:
-                        d[db_name] = message["data"][api_name]
+                        setattr(response, k, message["data"][v.api_name])
 
-                handler(d, **handler_kwargs)
+                handler(response, **handler_kwargs)
             except Exception as ex:
                 self.log.exception(ex)
 
@@ -254,8 +254,9 @@ class StockBybit(IStock):
             try:
                 is_snapshot = True if message["type"] == "snapshot" else False
 
-                d = {}
-                d[self.map.order_book.Time.db_name] = utils.ts_to_datetime(message["ts"])
+                response = IOrderBook()
+
+                response.Time = utils.ts_to_datetime(message["ts"])
 
                 handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Asks.api_name],
                                                     is_snapshot=is_snapshot,
@@ -263,7 +264,7 @@ class StockBybit(IStock):
                 if handle_ticker.asks_d_snapshot is None:
                     return
                 else:
-                    d[self.map.order_book.Asks.db_name] = np.array([[p,v] for p,v in handle_ticker.asks_d_snapshot.items()])
+                    response.Asks = np.array([[p,v] for p,v in handle_ticker.asks_d_snapshot.items()])
 
                 handle_ticker.bids_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Bids.api_name],
                                                     is_snapshot=is_snapshot,
@@ -271,9 +272,9 @@ class StockBybit(IStock):
                 if handle_ticker.bids_d_snapshot is None:
                     return
                 else:
-                    d[self.map.order_book.Bids.db_name] = np.array([[p,v] for p,v in handle_ticker.bids_d_snapshot.items()])
+                    response.Bids = np.array([[p,v] for p,v in handle_ticker.bids_d_snapshot.items()])
 
-                handler(d, **handler_kwargs)
+                handler(response, **handler_kwargs)
             except Exception as ex:
                 self.log.exception(ex)
 
