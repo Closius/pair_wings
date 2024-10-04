@@ -4,6 +4,10 @@
 #
 # The strategy is working in the loop of StateCollection()
 #
+# StateCollection is waiting for the date from the Stock(s) and updates
+# the State(s) (push updates into the queue). In parallel
+#
+#
 # The iterator state object of the current period of time
 # Every time when any of the information is received from the stock
 # - the state object returns
