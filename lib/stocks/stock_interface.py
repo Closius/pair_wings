@@ -5,7 +5,7 @@ from typing import List
 
 from concurrent.futures import ThreadPoolExecutor
 
-from lib.stocks.db_map.map_interface import IMap, ITicker, ICandle, ICandleTicker, IOrderBook
+from lib.stocks.db_map.map_interface import IMap, ITicker, ICandle, ICandleTicker, IOrderBook, IPosition
 
 
 class StockNotification:
@@ -65,13 +65,45 @@ class IStock:
     stream_decorator = staticmethod(stream_decorator)
 
 
-    def open_SHORT(self, uid, price, amount, stopLimit, takeProfit, limit=None):
+    def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
+        """
+        By market
+
+        amount_money_add > 0: To close the position use `close_SHORT_LONG()` (recommended) or open
+                                                                        the opposite side position
+
+        If the current pair already has the position size - the amount will be added to the current one
+
+        If stopLoss or/and takeProfit provided - they will be changed to the provided values
+
+        Immediate or Cancel (IOC)
+        The order must be filled immediately at the order limit price or better. If the order
+        cannot be filled immediately, the unfilled contracts will be canceled. IOC is usually
+        used to avoid large orders being executed at a price that deviates from the ideal price.
+        With this set, the contracts that fail to trade at the specified price will be canceled.
+
+        :param side: "SHORT"/"LONG"
+        :param pair:
+        :param amount_money_add: in fiat (USDT)
+        :param stopLoss:
+        :param takeProfit:
+        :return: orderId
+        """
         raise NotImplemented()
 
-    def open_LONG(self, uid, price, amount, stopLimit, takeProfit, limit=None):
-        raise NotImplemented()
+    def close_SHORT_LONG(self, pair, amount_percent=100):
+        """
+        By market
 
-    def close_SHORT_LONG(self, uid, limit=None):
+        if amount_percent=100 - all the qty (coins) will be closed by market price
+
+        Good till canceled (GTC)
+        The order will remain valid until it is fully executed or manually canceled by the trader.
+        GTC is suitable for traders who are willing to wait for all contracts to be completed at
+        a specified price and can flexibly cancel unconcluded contracts at any time.
+
+        :return:
+        """
         raise NotImplemented()
 
     def get_history_tohlcv(self, pair, interval, start, end=None) -> List[ICandle]:
@@ -86,6 +118,23 @@ class IStock:
                     ICandle ,
                     ...
                 ]
+        """
+        raise NotImplemented()
+
+    def get_ticker(self, pair) -> ITicker:
+        """
+        for tests only. use stream for prod
+
+        :param pair:
+        :return: ITicker
+        """
+        raise NotImplemented()
+
+    def get_position_status(self, pair) -> IPosition:
+        """
+        for tests and some internal only. use stream for prod
+
+        :return: IPosition
         """
         raise NotImplemented()
 
@@ -122,13 +171,14 @@ class IStock:
         raise NotImplemented()
 
     @stream_decorator
-    def stream_order_status(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
-                            pair):
+    def stream_position_status(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event):
         """
 
-        :param pair:
+        Position
+        Subscribe to the position stream to see changes to your position data in real-time.
+
         :param stop_event: to stop streaming
-        :return: interator
+        :return to `handler` IPosition
         """
         raise NotImplemented()
 

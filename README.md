@@ -13,6 +13,21 @@ Pairwings (or PW) is a framework for developing, testing and running the trading
   for a real trading in the single framework. 
 - trade. Run the strategy for a real trading.
 
+Limitations & Remarks
+---------------------
+
+* Only Derivates/Futures trading. 
+* All orders are executed by market price. 
+  See more in the doc of methods `stock.open_modify_SHORT_LONG()` `stock.close_SHORT_LONG()`
+
+* Only one position for the pair. With same pair in Derivatives/Futures trading exchanges 
+don't open several positions for individual position, in fact new position's quantity 
+gets added to the existing position, so if you had BTCUSDT position opened 
+with quantity 2, and you open a new position with quantity 3, the existing 
+position's quantity will be added to 5 instead of opening a new position. 
+Only positions with different pairs are created individually.
+
+
 Roadmap
 -------
 

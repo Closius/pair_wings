@@ -5,6 +5,17 @@ import threading
 DATA_FORMAT = '%d.%m.%Y %H:%M:%S,%f'
 
 
+def percentage(percent, whole):
+    return (percent * whole) / 100.0
+
+
+def get_precision(value):
+    try:
+        return len(str(value).split(".")[1])
+    except:
+        return 0
+
+
 def ts_to_datetime(timestamp: int | str):
     """
     :param timestamp: in milliseconds

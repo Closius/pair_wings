@@ -143,9 +143,35 @@ class IOrderBook(_base):
         super().__init__()
 
 
+class IPosition(_base):
+    """
+    Fields after set:
+        'CreatedTime': datetime.datetime(2024, 10, 2, 23, 20, 39, 873000),
+        'UpdatedTime': datetime.datetime(2024, 10, 2, 23, 20, 39, 873000),
+        'Side': "SHORT"/"LONG",
+        'Size': float,
+        'Profit_': float,
+        'MarkPrice_': float,
+        'StopLoss': float | None,
+        'TakeProfit': float | None,
+    """
+    def __init__(self):
+        self.CreatedTime = _Field("CreatedTime", "TIMESTAMP", NotImplemented)
+        self.UpdatedTime = _Field("UpdatedTime", "TIMESTAMP", NotImplemented)
+        self.Side = _Field("Side", "TEXT", NotImplemented)
+        self.Size = _Field("Size", "REAL", NotImplemented)
+        # Netto, what you earn if close by market
+        self.Profit_ = _Field("Profit_", "REAL", NotImplemented)
+        self.MarkPrice_ = _Field("MarkPrice_", "TEXT", NotImplemented)
+        self.StopLoss = _Field("StopLoss", "REAL", NotImplemented)
+        self.TakeProfit = _Field("TakeProfit", "REAL", NotImplemented)
+        super().__init__()
+
+
 class IMap:
     def __init__(self):
         self.ticker = ITicker()
         self.candle = ICandle()
         self.candle_ticker = ICandle()
         self.order_book = IOrderBook()
+        self.position = IPosition()
