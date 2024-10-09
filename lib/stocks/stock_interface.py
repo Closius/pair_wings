@@ -5,7 +5,8 @@ from typing import List
 
 from concurrent.futures import ThreadPoolExecutor
 
-from lib.stocks.db_map.map_interface import IMap, ITicker, ICandle, ICandleTicker, IOrderBook, IPosition
+from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTicker, IOrderBook,
+                                             IPosition, IInstrumentInfo)
 
 
 class StockNotification:
@@ -43,6 +44,7 @@ class IStock:
         self.notifications_queue = queue.Queue()
         self.map = map
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=None)
+        self._instrument_infos = {}
 
     def stream_decorator(func):
         """
@@ -63,6 +65,26 @@ class IStock:
         return wrapper
 
     stream_decorator = staticmethod(stream_decorator)
+
+    def get_funding_rate(self, pair, verbose=False):
+        """
+        Returns the funding rate at the current time
+
+        :param pair:
+        :return: float
+        """
+        raise NotImplemented()
+
+    def get_instrument_info(self, pair, verbose=False) -> IInstrumentInfo:
+        """
+        Instrument information
+
+        Store the requested info in self._instrument_infos
+
+        :param pair:
+        :return: IInstrumentInfo()
+        """
+        raise NotImplemented()
 
 
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
@@ -103,6 +125,29 @@ class IStock:
         a specified price and can flexibly cancel unconcluded contracts at any time.
 
         :return:
+        """
+        raise NotImplemented()
+
+    def formula_AEP(self, entry_qty_price_list: list):
+        """
+        Calculate Average entry price of the position
+
+        :param entry_qty_price_list: [ (Quantity1 x Price1) + (Quantity2 x Price2)...]
+
+        :return:
+        """
+        raise NotImplemented()
+
+    def formula_profit_loss(self, pair, side, average_entry_price_usdt, last_traded_price, qty,
+                            margin_leverage_pair, margin_leverage_pair_max, funding_rate, verbose=False):
+        """
+        Calculate the profit/losses (what you get in wallet) if close position by market
+
+        :return: {
+                    "Unrealized_PL_Money": float,
+                    "ROI_percent": float,
+                    "Closed_PL_Money": float
+                }
         """
         raise NotImplemented()
 

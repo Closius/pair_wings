@@ -10,14 +10,26 @@ from pybit.unified_trading import HTTP
 from lib.stocks.stock_interface import IStock
 from lib import utils
 
-from lib.stocks.db_map.map_interface import IMap, ITicker, ICandle, ICandleTicker, IOrderBook, IPosition
+from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTicker, IOrderBook, IPosition,
+                                             IInstrumentInfo)
 
 
 class StockBybit(IStock):
 
-    def __init__(self, map: IMap, account_name=None, api_secrets_file=None, settings_file=None):
+    """
+    Makers initiate orders, adding liquidity to the market,
+    while takers execute these orders, consuming liquidity
+
+    VIP 0 Perpetual & Futures Contracts Trading
+    in %
+    """
+
+    CROSS_MARGIN = True
+
+    def __init__(self, map: IMap, account_name=None, api_secrets_file=None, settings_file=None, demo=True):
         super().__init__(map=map)
         self.log.info(f"Connecting to public Bybit ...")
+        self.demo = demo
         self.http = HTTP(demo=True)
         self.http_private = None
         self.ws = WebSocket(
@@ -40,11 +52,11 @@ class StockBybit(IStock):
             self.http_private = HTTP(
                 api_key=api_secrets["accounts"][account_name]["API_KEY"],
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
-                demo=True,
+                demo=demo,
             )
 
             self.ws_private = WebSocket(
-                demo=True,
+                demo=demo,
                 testnet=False,
                 channel_type="private",
                 api_key=api_secrets["accounts"][account_name]["API_KEY"],
@@ -68,6 +80,43 @@ class StockBybit(IStock):
         for coin in wb["result"]["list"][0]["coin"]:
             if coin["coin"] == "USDT":
                 return coin["walletBalance"]
+
+    def get_funding_rate(self, pair, verbose=False):
+        ticker_obj = self.get_ticker(pair=pair)
+        return ticker_obj.FundingRate
+
+
+    def get_instrument_info(self, pair, verbose=False):
+        if pair not in self._instrument_infos:
+            instr_info = self.http.get_instruments_info(
+                category="linear",
+                symbol=pair,
+            )
+
+            r = IInstrumentInfo()
+            r.MaxLeverage = float(instr_info["result"]["list"][0]["leverageFilter"]["maxLeverage"])
+            r.PriceScale = int(instr_info["result"]["list"][0]["priceScale"])
+            if self.demo is False:
+                fee_rates = self.http_private.get_fee_rates(
+                    category="linear",
+                    symbol=pair,
+                )
+                r.TakerFeeRate = float(fee_rates["result"]["list"][0]["takerFeeRate"])
+                r.MakerFeeRate = float(fee_rates["result"]["list"][0]["makerFeeRate"])
+            else:
+                r.TakerFeeRate = 0.0550 / 100
+                r.MakerFeeRate = 0.0200 / 100
+
+            self._instrument_infos[pair] = r
+
+        if verbose:
+            self.log.info(f"Instrument info {pair}:")
+            self.log.info(f"\tMaxLeverage: {self._instrument_infos[pair].MaxLeverage}")
+            self.log.info(f"\tPriceScale: {self._instrument_infos[pair].PriceScale}")
+            self.log.info(f"\tTakerFeeRate: {self._instrument_infos[pair].TakerFeeRate}")
+            self.log.info(f"\tMakerFeeRate: {self._instrument_infos[pair].MakerFeeRate}")
+
+        return self._instrument_infos[pair]
 
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
         if amount_money_add and amount_money_add <= 0:
@@ -172,6 +221,168 @@ class StockBybit(IStock):
 
         self.log.info(f"<< Completed >>. {msg}")
 
+
+    def formula_AEP(self, entry_qty_price_list: list):
+        """
+        Calculate Average entry price
+
+        https://www.bybit.com/en/help-center/article/Profit-Loss-calculations-USDT-ContractUSDT_Perpetual_UTA
+
+        :return:
+        """
+        """
+            Average entry price = Total contract value in USDT/Total quantity of contracts
+            Total contract value in USDT = ( (Quantity1 x Price1) + (Quantity2 x Price2)...)
+            By using the figures above:
+
+            Total contract value in USDT 
+            = ( (Quantity1 x Price1) + (Quantity2 x Price2) )
+            = ( (0.5 x 5,000) + (0.3 x 6,000) )
+            = 4300
+            Total quantity of contracts
+            = 0.5 + 0.3
+            = 0.8 BTC
+            Average Entry Price
+             = 4,300 / 0.8
+            = 5,375
+
+        """
+        total_contract_value_in_usdt = 0
+        total_quantity_contracts = 0
+        for q, p in entry_qty_price_list:
+            total_contract_value_in_usdt += q * p
+            total_quantity_contracts += q
+        return total_contract_value_in_usdt / total_quantity_contracts
+
+    def formula_profit_loss(self, pair, side, average_entry_price_usdt, last_traded_price, qty,
+                            margin_leverage_pair, margin_leverage_pair_max, funding_rate, verbose=False):
+        """
+        Calculate the profit/losses (what you get in wallet) from the closing order by market
+
+        https://www.bybit.com/en/help-center/article/Profit-Loss-calculations-USDT-ContractUSDT_Perpetual_UTA
+
+        :return:
+        """
+
+
+        """
+            https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
+        """
+        entry_price_usdt = average_entry_price_usdt
+        position_side = 1 if side == "LONG" else -1
+        unrealized_pl_usdt = qty * position_side * (last_traded_price - entry_price_usdt)
+
+
+        """
+            https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
+        """
+
+        collateral = (qty * entry_price_usdt) / margin_leverage_pair
+        total_account_value = collateral + unrealized_pl_usdt
+        bankruptcy_price = last_traded_price - position_side * (total_account_value / qty)
+
+        if verbose:
+            self.log.info(f"average_entry_price_usdt: {average_entry_price_usdt}")
+            self.log.info(f"bankruptcy_price(calculated): {bankruptcy_price}")
+
+        """
+            https://www.bybit.com/en/help-center/article/Profit-Loss-calculations-USDT-ContractUSDT_Perpetual_UTA
+        
+            Unrealized P&L%
+    
+            Unrealized P&L% basically shows the Return on Investment (ROI) of the position 
+            in its percentage form. Similar to Unrealized P&L, the figure shows changes 
+            depending on the movement of the Last Traded Price. As such, the Unrealized 
+            PNL% or ROI formula is below.
+            
+            Unrealized P&L% = [ Position's unrealized P&L / Position Margin ] x 100%
+            Position Margin = Initial margin + Fee to close
+            
+            Using Trader B as an example, Trader B holds an existing BTCUSDT open buy position 
+            of 0.2 qty with an entry price of USD 7,000. When the Last Traded Price inside 
+            the order book is showing USD 7,500, the unrealized P&L shown will be 100 USDT. 
+            Assuming the leverage used is 10x. 
+                     
+            Based on our earlier calculation, the position's unrealized P&L = 100 USDT
+            Initial margin = (Qty x Entry price) / leverage = (0.2 x 7000) /10 = 140 USDT
+            Fee to close = Bankruptcy price x Qty x 0.055% = 6,300 x 0.2 x 0.055% = 0.693 USDT
+            Unrealized P&L% = [ 100 USDT / ( 140 USDT + 0.693 USDT ) ] x 100% = 71.07%
+            
+            For cross margin mode, the position margin will always be calculated using 
+            the maximum leverage allowed under the current risk limit level for the 
+            particular coin (Example BTCUSDT = 100x). 
+            
+            Under Cross margin mode:
+            
+            Unrealized P&L% = Unrealized P&L /(initial margin + fee to close) X 100%
+            
+        """
+        # TODO: investigate if it should be used the max margin for collateral calculation
+        if self.CROSS_MARGIN:
+            margin_leverage = margin_leverage_pair_max
+        collateral = (qty * entry_price_usdt) / margin_leverage_pair  # init margin
+        if verbose:
+            self.log.info(f"collateral (init margin): {collateral}")
+        # TODO: why bankruptcy_price ?  But it returns value that mach with the stock UI
+        fee_to_close = bankruptcy_price * qty * self.get_instrument_info(pair).MakerFeeRate
+        # fee_to_close = last_traded_price * qty * self.get_instrument_info(pair).MakerFeeRate
+        position_margin = collateral + fee_to_close
+
+        ROI_or_unrealized_pl_percent =  ( unrealized_pl_usdt  / position_margin ) * 100
+
+        """
+            Closed P&L   
+            
+            When traders finally close their position, the P&L becomes realized and is recorded 
+            inside the Closed P&L tab within the Assets page. Unlike unrealized P&L, there are 
+            some major differences in the calculation. Below summarizes the differences between 
+            the unrealized P&L and closed P&L. 
+            
+            Therefore, assuming full closing of the entire position, the formula for calculating 
+            Closed P&L is as follows:
+            
+            Closed P&L = Position P&L - Fee to open - Fee to close - Sum of all funding fees paid/received
+            
+            Using Trader C as an example, Trader C holds an existing BTCUSDT open sell position of 
+            0.4 qty with an entry price of USD 6,000. When the Last Traded Price inside the order 
+            book is showing USD 5,000, trader C decided to close the entire position via the Close 
+            by Market function. 
+            
+             
+            
+            Assuming that Trader C also opened the position via a market order and funding fees 
+            totaling 2.10 USDT were paid out while holding the position. 
+            
+            Fee to open = Qty x Entry price x 0.055% = 1.32 USDT paid out
+            Fee to close = Qty x Exit price x 0.055% = 1.1 USDT paid out
+            Sum of all funding fees paid/received = 2.10 USDT paid out
+            Closed P&L = 400 - 1.32 - 1.1 - 2.10 = 395.48 USDT
+             
+            
+            Note: 
+            a) The above example only applies when the entire position is opened and closed via a 
+            single order in both directions. 
+            b) For partial closing of positions, Closed P&L will prorate all fees (fee to open 
+            and funding fee(s)) according to the percentage of the position partially closed and 
+            use the pro-rated figure to compute the Closed P&L
+            c) Traders can view their Closed P&L history from here. 
+            
+        """
+        if verbose:
+            self.log.info(f"funding_rate: {funding_rate}")
+        fee_to_open = qty * entry_price_usdt * self.get_instrument_info(pair).MakerFeeRate
+        exit_price_usdt = last_traded_price
+        fee_to_close = qty * exit_price_usdt * self.get_instrument_info(pair).MakerFeeRate
+
+        # TODO: should be calculated if
+        fee_funding = qty * last_traded_price * funding_rate
+
+        closed_pl_usdt = unrealized_pl_usdt - fee_to_open - fee_to_close - fee_funding
+        return {"Unrealized_PL_Money": unrealized_pl_usdt,
+             "ROI_percent": ROI_or_unrealized_pl_percent,
+             "Closed_PL_Money": closed_pl_usdt}
+
+
     def get_history_tohlcv(self, pair, interval, start, end=None):
         kargs = {
             "category": "linear",
@@ -214,21 +425,50 @@ class StockBybit(IStock):
             symbol=pair,
         )
         if (len(pos_info["result"]["list"]) == 0) or (pos_info["result"]["list"][0]["size"] == "0"):
+            if verbose:
+                self.log.info("No position opened")
             return None
         data = pos_info["result"]["list"][0]
         if verbose:
             self.log.info(f"Position on {pair}:")
-            self.log.info(json.dumps(data, indent=4))
+            # self.log.info(json.dumps(data, indent=4))
         response = IPosition()
         response.CreatedTime = utils.ts_to_datetime(data[self.map.position.CreatedTime.api_name])
         response.UpdatedTime = utils.ts_to_datetime(data[self.map.position.UpdatedTime.api_name])
         response.Side = "SHORT" if data[self.map.position.Side.api_name] == "Sell" else "LONG"
         response.Size = float(data[self.map.position.Size.api_name])
+        response.AvgPrice = float(data[self.map.position.AvgPrice.api_name]) # self.formula_AEP(entry_qty_price_list=)
+        response.Leverage = float(data[self.map.position.Leverage.api_name])
         response.MarkPrice_ = float(data[self.map.position.MarkPrice_.api_name])
         response.StopLoss = None if data[self.map.position.StopLoss.api_name] == "" else float(data[self.map.position.StopLoss.api_name])
         response.TakeProfit = None if data[self.map.position.TakeProfit.api_name] == "" else float(data[self.map.position.TakeProfit.api_name])
 
-        response.Profit_ = float(data["unrealisedPnl"]) + float(data["curRealisedPnl"])
+        instrument_info_obj = self.get_instrument_info(pair=pair)
+
+        pl_dict = self.formula_profit_loss(pair=pair,
+                                           side=response.Side,
+                                           average_entry_price_usdt=response.AvgPrice,
+                                           last_traded_price=response.MarkPrice_,
+                                           qty=response.Size,
+                                           margin_leverage_pair=response.Leverage,
+                                           margin_leverage_pair_max=instrument_info_obj.MaxLeverage,
+                                           funding_rate=self.get_funding_rate(pair=pair))
+
+        response.Unrealized_PL_Money = pl_dict["Unrealized_PL_Money"]
+        response.ROI_percent = pl_dict["ROI_percent"]
+        response.Closed_PL_Money = pl_dict["Closed_PL_Money"]
+
+        if verbose:
+
+            self.log.info("ProfitLoss (calculated):")
+            self.log.info(f"\tUnrealized_PL_Money: {response.Unrealized_PL_Money}")
+            self.log.info(f"\tROI_percent: {response.ROI_percent}")
+            self.log.info(f"\tClosed_PL_Money: {response.Closed_PL_Money}")
+
+            # self.log.info("ProfitLoss (from stock):")
+            # self.log.info(f"\tUnrealised PnL: {data['unrealisedPnl']}")
+            # self.log.info(f"\tThe realised PnL for the current holding position: {data['curRealisedPnl']}")
+            # self.log.info(f"\tAll time cumulative realised P&L: {data['cumRealisedPnl']}")
 
         return response
 

@@ -29,7 +29,8 @@ def main():
     log.info("5 - Read stream candles")
     log.info("6 - Trade demo: open SHORT")
     log.info("7 - Trade demo: close whole SHORT")
-    log.info("8 - Quit")
+    log.info("8 - Trade demo: get position status")
+    log.info("9 - Quit")
     r = input()
     log.info(r)
     map = MapBybit()
@@ -80,16 +81,15 @@ def main():
                          amount_money_add=amount, stopLoss=stopLoss,
                          takeProfit=takeProfit)
 
-        stock.open_modify_SHORT_LONG(side="SHORT", pair="BTCUSDT",
-                         amount_money_add=amount)
+        # stock.open_modify_SHORT_LONG(side="SHORT", pair="BTCUSDT",
+        #                  amount_money_add=amount)
 
     elif r == "7":
         position = stock.get_position_status(pair="BTCUSDT", verbose=True)
         if position:
-            log.info(f"estimated profit: {position.Profit_}")
             stock.close_SHORT_LONG(pair="BTCUSDT", amount_percent=100)
-
-
+    elif r == "8":
+        position = stock.get_position_status(pair="BTCUSDT", verbose=True)
 
 if __name__ == "__main__":
     main()

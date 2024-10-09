@@ -16,9 +16,11 @@ Pairwings (or PW) is a framework for developing, testing and running the trading
 Limitations & Remarks
 ---------------------
 
-* Only Derivates/Futures trading. 
+* Only Perpetual futures trading. 
 * All orders are executed by market price. 
   See more in the doc of methods `stock.open_modify_SHORT_LONG()` `stock.close_SHORT_LONG()`
+* No hadge trading - can hold only SHORT or LONG at one time
+* Cross margin only
 
 * Only one position for the pair. With same pair in Derivatives/Futures trading exchanges 
 don't open several positions for individual position, in fact new position's quantity 

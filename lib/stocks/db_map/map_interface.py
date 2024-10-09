@@ -57,15 +57,25 @@ class _base:
         return [c.api_name for c in self.init_fields.values()]
 
 
+class IInstrumentInfo(_base):
+    def __init__(self):
+        self.MaxLeverage = _Field("MaxLeverage", "REAL", NotImplemented)
+        self.PriceScale = _Field("PriceScale", "REAL", NotImplemented)
+        self.TakerFeeRate = _Field("TakerFeeRate", "REAL", NotImplemented)
+        self.MakerFeeRate = _Field("MakerFeeRate", "REAL", NotImplemented)
+        super().__init__()
+
+
 class ITicker(_base):
     """
         Fields after set:
             'Time': datetime.datetime(2024, 10, 2, 22, 54, 17, 928000),
-            'MarkPrice': '3259.94',
-            'Ask1Size': '0.155',
-            'Bid1Size': '4199.144',
-            'OpenInterest': '1224249.628',
-            'OpenInterestValue': '3990980332.30'
+            'MarkPrice': 3259.94,
+            'Ask1Size': 0.155,
+            'Bid1Size': 4199.144,
+            'OpenInterest': 1224249.628,
+            'OpenInterestValue': 3990980332.30
+            'FundingRate': 0.05
     """
     def __init__(self):
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
@@ -74,6 +84,7 @@ class ITicker(_base):
         self.Bid1Size = _Field("Bid1Size", "REAL", NotImplemented)
         self.OpenInterest = _Field("OpenInterest", "REAL", NotImplemented)
         self.OpenInterestValue = _Field("OpenInterestValue", "REAL", NotImplemented)
+        self.FundingRate = _Field("FundingRate", "REAL", NotImplemented)
         super().__init__()
 
 
@@ -83,12 +94,12 @@ class ICandle(_base):
 
     Fields after set:
         'Time': datetime.datetime(2024, 9, 16, 19, 15),
-        'Open': '57566.6',
-        'High': '57718.8',
-        'Low': '57535.1',
-        'Close': '57569.7',
-        'Volume': '614.993',
-        'Turnover': '35447184.1698'
+        'Open': 57566.6,
+        'High': 57718.8,
+        'Low': 57535.1,
+        'Close': 57569.7,
+        'Volume': 614.993,
+        'Turnover': 35447184.1698
     """
     def __init__(self):
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
@@ -109,12 +120,12 @@ class ICandleTicker(_base):
         'Time': datetime.datetime(2024, 10, 2, 23, 20, 41, 655000),
         'Start': datetime.datetime(2024, 10, 2, 23, 20),
         'End': datetime.datetime(2024, 10, 2, 23, 24, 59, 999000),
-        'Open': '55239.6',
-        'High': '55440',
-        'Low': '53750',
-        'Close': '55440',
-        'Volume': '2382.393',
-        'Turnover': '132078946.7517'
+        'Open': 55239.6,
+        'High': 55440,
+        'Low': 53750,
+        'Close': 55440,
+        'Volume': 2382.393,
+        'Turnover': 132078946.7517
     """
     def __init__(self):
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
@@ -160,11 +171,17 @@ class IPosition(_base):
         self.UpdatedTime = _Field("UpdatedTime", "TIMESTAMP", NotImplemented)
         self.Side = _Field("Side", "TEXT", NotImplemented)
         self.Size = _Field("Size", "REAL", NotImplemented)
-        # Netto, what you earn if close by market
-        self.Profit_ = _Field("Profit_", "REAL", NotImplemented)
+        self.AvgPrice = _Field("AvgPrice", "REAL", NotImplemented)
+        self.Leverage = _Field("Leverage", "REAL", NotImplemented)
         self.MarkPrice_ = _Field("MarkPrice_", "TEXT", NotImplemented)
         self.StopLoss = _Field("StopLoss", "REAL", NotImplemented)
         self.TakeProfit = _Field("TakeProfit", "REAL", NotImplemented)
+        # PL without any fees
+        self.Unrealized_PL_Money = _Field("Unrealized_PL_Money", "REAL", NotImplemented)
+        # ROI
+        self.ROI_percent = _Field("ROI_percent", "REAL", NotImplemented)
+        # How much I earn on my wallet
+        self.Closed_PL_Money = _Field("Closed_PL_Money", "REAL", NotImplemented)
         super().__init__()
 
 

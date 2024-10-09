@@ -10,7 +10,7 @@ class TickerBybit(ITicker):
         self.Bid1Size.api_name = "bid1Size"
         self.OpenInterest.api_name = "openInterest"
         self.OpenInterestValue.api_name = "openInterestValue"
-
+        self.FundingRate.api_name = "fundingRate"
 
 class CandleBybit(ICandle):
     def __init__(self):
@@ -53,11 +53,14 @@ class PositionBybit(IPosition):
         self.UpdatedTime.api_name = "updatedTime"
         self.Side.api_name = "side"
         self.Size.api_name = "size"
-        self.Profit_.api_name = None  # has to be calculated
+        self.AvgPrice.api_name = "avgPrice"
+        self.Leverage.api_name = "leverage"
         self.MarkPrice_.api_name = "markPrice"
         self.StopLoss.api_name = "stopLoss"
         self.TakeProfit.api_name = "takeProfit"
-
+        self.Unrealized_PL_Money.api_name = None  # calculated
+        self.ROI_percent.api_name = None  # calculated
+        self.Closed_PL_Money.api_name = None  # calculated
 
 class MapBybit(IMap):
     def __init__(self):
