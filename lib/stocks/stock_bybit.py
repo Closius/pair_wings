@@ -459,8 +459,7 @@ class StockBybit(IStock):
         response.Closed_PL_Money = pl_dict["Closed_PL_Money"]
 
         if verbose:
-
-            self.log.info("ProfitLoss (calculated):")
+            # self.log.info("ProfitLoss (calculated):")
             self.log.info(f"\tUnrealized_PL_Money: {response.Unrealized_PL_Money}")
             self.log.info(f"\tROI_percent: {response.ROI_percent}")
             self.log.info(f"\tClosed_PL_Money: {response.Closed_PL_Money}")
