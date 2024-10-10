@@ -75,11 +75,11 @@ class StockBybit(IStock):
             qty = round(qty, 3)
         return qty
 
-    def _get_current_USDT_deposit(self):
+    def get_USDT_deposit(self):
         wb = self.http_private.get_wallet_balance(accountType="UNIFIED")
         for coin in wb["result"]["list"][0]["coin"]:
             if coin["coin"] == "USDT":
-                return coin["walletBalance"]
+                return float(coin["walletBalance"])
 
     def get_funding_rate(self, pair, verbose=False):
         ticker_obj = self.get_ticker(pair=pair)
@@ -269,7 +269,7 @@ class StockBybit(IStock):
             https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
         """
         entry_price_usdt = average_entry_price_usdt
-        position_side = 1 if side == "LONG" else -1
+        position_side = utils.position_side(side)
         unrealized_pl_usdt = qty * position_side * (last_traded_price - entry_price_usdt)
 
 
@@ -464,9 +464,9 @@ class StockBybit(IStock):
             self.log.info(f"\tROI_percent: {response.ROI_percent}")
             self.log.info(f"\tClosed_PL_Money: {response.Closed_PL_Money}")
 
-            # self.log.info("ProfitLoss (from stock):")
-            # self.log.info(f"\tUnrealised PnL: {data['unrealisedPnl']}")
-            # self.log.info(f"\tThe realised PnL for the current holding position: {data['curRealisedPnl']}")
+            self.log.info("ProfitLoss (from stock):")
+            self.log.info(f"\tUnrealised PnL: {data['unrealisedPnl']}")
+            self.log.info(f"\tThe realised PnL for the current holding position: {data['curRealisedPnl']}")
             # self.log.info(f"\tAll time cumulative realised P&L: {data['cumRealisedPnl']}")
 
         return response

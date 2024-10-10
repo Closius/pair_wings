@@ -66,6 +66,14 @@ class IStock:
 
     stream_decorator = staticmethod(stream_decorator)
 
+    def get_USDT_deposit(self):
+        """
+        Return USDT wallet deposit
+
+        :return: float
+        """
+        raise NotImplemented()
+
     def get_funding_rate(self, pair, verbose=False):
         """
         Returns the funding rate at the current time

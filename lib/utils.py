@@ -9,6 +9,26 @@ def percentage(percent, whole):
     return (percent * whole) / 100.0
 
 
+def position_side(side):
+    return 1 if side == "LONG" else -1
+
+
+def error_percent(experiment, theory):
+    """
+
+    theory > experiment = negative
+
+    :param experiment:
+    :param theory:
+    :return:
+    """
+    error = (abs(experiment - theory) / theory) * 100
+    if theory > experiment:
+        return - abs(error)
+    else:
+        return abs(error)
+
+
 def get_precision(value):
     try:
         return len(str(value).split(".")[1])
