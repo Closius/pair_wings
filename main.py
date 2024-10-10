@@ -6,6 +6,7 @@ import random
 import statistics
 import logging
 import threading
+import numpy as np
 
 from lib import data_show, data_collector, utils
 
@@ -47,12 +48,13 @@ def close_position(stock, amount_percent=100):
     if position:
         stock.close_SHORT_LONG(pair="BTCUSDT", amount_percent=amount_percent)
     balance_end = stock.get_USDT_deposit()
-    log.info(f"Earned netto (the fact from stock): {balance_end - balance_init}")
-    error_percent = round(utils.error_percent(experiment=balance_end - balance_init,
+    earn_net = balance_end - balance_init
+    log.info(f"Earned netto (the fact from stock): {earn_net}")
+    error_percent = round(utils.error_percent(experiment=earn_net,
                                       theory=position.Closed_PL_Money), 2)
     log.info(f"Error calculated PL and earned: {error_percent} %")
 
-    return error_percent, position.ROI_percent
+    return earn_net, error_percent, position.ROI_percent, position.Unrealized_PL_Money
 
 
 def main():
@@ -117,45 +119,84 @@ def main():
                     wait_for_add_second=None, add_qty=0.01)
 
     elif r == "7":
-        error_percent, ROI_percent = close_position(stock, amount_percent=100)
+        earn_net, error_percent, ROI_percent, unrealized_PnL = close_position(stock, amount_percent=100)
+        log.info(f"earn_net: {earn_net}")
+        log.info(f"error_percent: {error_percent}")
+        log.info(f"ROI_percent: {ROI_percent}")
+        log.info(f"unrealized_PnL: {unrealized_PnL}")
     elif r == "8":
         position = stock.get_position_status(pair="BTCUSDT", verbose=True)
     elif r == "9":
+        earn_nets = []
         error_percents = []
         ROI_percents = []
-        nos = 20
+        unrealized_PnLs = []
+        nos = 100
         for i in range(nos):
             log.info(f"")
             log.info(f"")
             log.info(f" ================>  STEP {i+1} of {nos}")
             log.info(f"")
             log.info(f"")
-            wait_for_add_second = random.randint(-3, 20)
+            wait_for_add_second = random.randint(-3, 30)
             if wait_for_add_second <= 0:
                 wait_for_add_second = None
-            open_add_position(stock, side="SHORT",
+            open_add_position(stock, side=random.choice(["SHORT", "LONG"]),
                               percent_from_deposit=random.uniform(0.5, 3.0),
                               qty=0.01,
                               wait_for_add_second=wait_for_add_second,
                               add_qty=0.01)
-            wait_for_close = random.randint(2, 15)
-            time.sleep(wait_for_close)
-            error_percent, ROI_percent = close_position(stock, amount_percent=100)
+            wait_for_close_seconds = random.randint(10, 30)
+            log.info(f"wait_for_close_seconds: {wait_for_close_seconds}")
+            time.sleep(wait_for_close_seconds)
+            earn_net, error_percent, ROI_percent, unrealized_PnL = close_position(stock, amount_percent=100)
+            earn_nets.append(earn_net)
             error_percents.append(error_percent)
             ROI_percents.append(ROI_percent)
+            unrealized_PnLs.append(unrealized_PnL)
         log.info("====== Summary ======")
         log.info(f"error_percents: theory > experiment = negative")
         log.info(f"")
-        log.info(f"error_percents: {error_percents}")
-        log.info(f"ROI_percents: {ROI_percents}")
-
+        log.info(f"earn_nets = {earn_nets}")
+        log.info(f"error_percents = {error_percents}")
+        log.info(f"ROI_percents = {ROI_percents}")
+        log.info(f"unrealized_PnLs = {unrealized_PnLs}")
+        log.info(f"---")
+        log.info(f"earn_nets MAX: {max(earn_nets)}")
+        log.info(f"earn_nets MIN: {min(earn_nets)}")
+        log.info(f"earn_nets MEAN: {statistics.mean(earn_nets)}")
+        log.info(f"---")
         log.info(f"The BEST earn prediction: {max(error_percents)}")
         log.info(f"The WORST earn prediction: {min(error_percents)}")
         log.info(f"The AVERAGE earn prediction: {statistics.mean(error_percents)}")
-
+        log.info(f"---")
         log.info(f"ROI_percents MAX: {max(ROI_percents)}")
         log.info(f"ROI_percents MIN: {min(ROI_percents)}")
         log.info(f"ROI_percents MEAN: {statistics.mean(ROI_percents)}")
+        log.info(f"---")
+        log.info(f"unrealized_PnLs MAX: {max(unrealized_PnLs)}")
+        log.info(f"unrealized_PnLs MIN: {min(unrealized_PnLs)}")
+        log.info(f"unrealized_PnLs MEAN: {statistics.mean(unrealized_PnLs)}")
+        log.info(f"---")
+        e_upl = np.corrcoef(earn_nets, unrealized_PnLs)[0][1]
+        e_ROI = np.corrcoef(earn_nets, ROI_percents)[0][1]
+        e_err = np.corrcoef(earn_nets, error_percents)[0][1]
+        log.info(f"Correlation earn_nets vs unrealized_PnLs: {e_upl}")
+        log.info(f"Correlation earn_nets vs ROI_percents: {e_ROI}")
+        log.info(f"Correlation earn_nets vs error_percents: {e_err}")
+        log.info(f"---")
+        log.info(f"If any correlation is higher than 0.95 - you can use it as a metric!")
+
+        import matplotlib.pyplot as plt
+        plt.style.use('ggplot')
+
+        fig, ax = plt.subplots()
+        ax.plot(earn_nets, unrealized_PnLs, linewidth=0, marker='s', label='unrealized_PnL', color='green')
+        ax.plot(earn_nets, ROI_percents, linewidth=0, marker='s', label='ROI_percent', color='red')
+        ax.set_xlabel('earn_nets')
+        ax.set_ylabel('unrealised_PnL/ROI_percent')
+        ax.legend(facecolor='white')
+        plt.show()
 
 
 if __name__ == "__main__":
