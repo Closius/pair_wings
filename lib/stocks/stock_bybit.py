@@ -268,22 +268,54 @@ class StockBybit(IStock):
         """
             https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
         """
+        if verbose:
+            self.log.info(f"[formula] common input:")
+            self.log.info(f"[formula] \taverage_entry_price_usdt: {average_entry_price_usdt}")
+            self.log.info(f"[formula] \tlast_traded_price: {last_traded_price}")
+            self.log.info(f"[formula] \tqty: {qty}")
+            self.log.info(f"[formula] \tmargin_leverage_pair: {margin_leverage_pair}")
+            self.log.info(f"[formula] \tmargin_leverage_pair_max: {margin_leverage_pair_max}")
+            self.log.info(f"[formula] \tfunding_rate: {funding_rate}")
+            self.log.info(f"[formula] \tposition_side: {side}")
+
+        if verbose:
+            self.log.info(f"[formula] calculating 'unrealized_pl_usdt':")
         entry_price_usdt = average_entry_price_usdt
         position_side = utils.position_side(side)
         unrealized_pl_usdt = qty * position_side * (last_traded_price - entry_price_usdt)
-
+        if verbose:
+            self.log.info(f"[formula] \tunrealized_pl_usdt: {unrealized_pl_usdt}")
 
         """
             https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
+                
+            https://www.bybit.com/en/help-center/article/Bankruptcy-Price-USDT-Contract
+            
+            For Buy/Long:
+            Bankruptcy Price= Entry Price × (1 - Initial Margin Rate*)
+            
+            For Sell/Short:
+            Bankruptcy Price= Entry Price × (1 + Initial Margin Rate*)
+            *Initial Margin Rate (IMR) = 1/ Leverage
+            
         """
 
-        collateral = (qty * entry_price_usdt) / margin_leverage_pair
-        total_account_value = collateral + unrealized_pl_usdt
-        bankruptcy_price = last_traded_price - position_side * (total_account_value / qty)
+        if verbose:
+            self.log.info(f"[formula] calculating 'bankruptcy_price':")
+        collateral = (qty * entry_price_usdt) / margin_leverage_pair  # init margin
+        # total_account_value = collateral + unrealized_pl_usdt
+        # bankruptcy_price_common_calc = last_traded_price - position_side * (total_account_value / qty)
+        # bankruptcy_price_common_calc gives the same result as below
+        bankruptcy_price = entry_price_usdt * (1 - position_side * (1 / margin_leverage_pair))
+        bankruptcy_price_max_lev = entry_price_usdt * (1 - position_side * (1 / margin_leverage_pair_max))
 
         if verbose:
-            self.log.info(f"average_entry_price_usdt: {average_entry_price_usdt}")
-            self.log.info(f"bankruptcy_price(calculated): {bankruptcy_price}")
+            self.log.info(f"[formula] \tcollateral (init margin): {collateral}")
+            self.log.info(f"[formula] \tcollateral (init margin) based on max leverage: {(qty * entry_price_usdt) / margin_leverage_pair_max}")
+            # self.log.info(f"[formula] \ttotal_account_value: {total_account_value}")
+            # self.log.info(f"[formula] \tbankruptcy_price_common_calc: {bankruptcy_price_common_calc}")
+            self.log.info(f"[formula] \tbankruptcy_price: {bankruptcy_price}")
+            self.log.info(f"[formula] \tbankruptcy_price based on max leverage: {bankruptcy_price_max_lev}")
 
         """
             https://www.bybit.com/en/help-center/article/Profit-Loss-calculations-USDT-ContractUSDT_Perpetual_UTA
@@ -317,18 +349,24 @@ class StockBybit(IStock):
             Unrealized P&L% = Unrealized P&L /(initial margin + fee to close) X 100%
             
         """
+        if verbose:
+            self.log.info(f"[formula] calculating 'ROI_or_unrealized_pl_percent':")
+
         # TODO: investigate if it should be used the max margin for collateral calculation
         if self.CROSS_MARGIN:
             margin_leverage = margin_leverage_pair_max
-        collateral = (qty * entry_price_usdt) / margin_leverage_pair  # init margin
-        if verbose:
-            self.log.info(f"collateral (init margin): {collateral}")
+        # collateral = (qty * entry_price_usdt) / margin_leverage_pair  # init margin
         # TODO: why bankruptcy_price ?  But it returns value that mach with the stock UI
         fee_to_close = bankruptcy_price * qty * self.get_instrument_info(pair).MakerFeeRate
         # fee_to_close = last_traded_price * qty * self.get_instrument_info(pair).MakerFeeRate
         position_margin = collateral + fee_to_close
 
-        ROI_or_unrealized_pl_percent =  ( unrealized_pl_usdt  / position_margin ) * 100
+        ROI_or_unrealized_pl_percent = ( unrealized_pl_usdt  / position_margin ) * 100
+
+        if verbose:
+            self.log.info(f"[formula] \tfee_to_close (based on bankruptcy_price): {fee_to_close}")
+            self.log.info(f"[formula] \tposition_margin: {position_margin}")
+            self.log.info(f"[formula] \tROI_or_unrealized_pl_percent: {ROI_or_unrealized_pl_percent}")
 
         """
             Closed P&L   
@@ -369,15 +407,23 @@ class StockBybit(IStock):
             
         """
         if verbose:
-            self.log.info(f"funding_rate: {funding_rate}")
+            self.log.info(f"[formula] calculating 'closed_pl_usdt':")
         fee_to_open = qty * entry_price_usdt * self.get_instrument_info(pair).MakerFeeRate
         exit_price_usdt = last_traded_price
         fee_to_close = qty * exit_price_usdt * self.get_instrument_info(pair).MakerFeeRate
 
-        # TODO: should be calculated if
-        fee_funding = qty * last_traded_price * funding_rate
+        # TODO: should be calculated if taken
+        # fee_funding = qty * last_traded_price * funding_rate
+        fee_funding = 0
 
         closed_pl_usdt = unrealized_pl_usdt - fee_to_open - fee_to_close - fee_funding
+
+        if verbose:
+            self.log.info(f"[formula] \tfee_funding: {fee_funding}")
+            self.log.info(f"[formula] \tfee_to_open: {fee_to_open}")
+            self.log.info(f"[formula] \tfee_to_close: {fee_to_close}")
+            self.log.info(f"[formula] \tclosed_pl_usdt: {closed_pl_usdt}")
+
         return {"Unrealized_PL_Money": unrealized_pl_usdt,
              "ROI_percent": ROI_or_unrealized_pl_percent,
              "Closed_PL_Money": closed_pl_usdt}
@@ -431,6 +477,8 @@ class StockBybit(IStock):
         data = pos_info["result"]["list"][0]
         if verbose:
             self.log.info(f"Position on {pair}:")
+            self.log.info(f"initial margin (from stock): {data['positionIM']}")
+            self.log.info(f"Bankruptcy price (from stock): {data['bustPrice']}")
             # self.log.info(json.dumps(data, indent=4))
         response = IPosition()
         response.CreatedTime = utils.ts_to_datetime(data[self.map.position.CreatedTime.api_name])
@@ -452,7 +500,8 @@ class StockBybit(IStock):
                                            qty=response.Size,
                                            margin_leverage_pair=response.Leverage,
                                            margin_leverage_pair_max=instrument_info_obj.MaxLeverage,
-                                           funding_rate=self.get_funding_rate(pair=pair))
+                                           funding_rate=self.get_funding_rate(pair=pair),
+                                           verbose=verbose)
 
         response.Unrealized_PL_Money = pl_dict["Unrealized_PL_Money"]
         response.ROI_percent = pl_dict["ROI_percent"]
