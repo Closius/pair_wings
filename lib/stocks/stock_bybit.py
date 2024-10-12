@@ -68,12 +68,31 @@ class StockBybit(IStock):
         https://bybit-exchange.github.io/docs/v5/market/tickers
         """
         tickers = self.http_private.get_tickers(category="linear", symbol=symbol)
-        mp = tickers["result"]["list"][0]["markPrice"]
-        qty = amount_money / float(mp)
+        mp = float(tickers["result"]["list"][0]["markPrice"])
+        qty = amount_money / mp
         self.log.info(f"value_to_qty {symbol} price {mp}: {amount_money} -> {qty}")
-        if symbol == "BTCUSDT":
-            qty = round(qty, 3)
+        precision_qty = self.get_instrument_info(pair=symbol, verbose=False).QtyScale
+        qty = round(qty, precision_qty)
         return qty
+
+    def get_min_order_qty_price(self, pair, verbose=False):
+        if verbose:
+            self.log.info(f"Minimum order limits {pair}:")
+        inst_info = self.get_instrument_info(pair=pair, verbose=False)
+        tickers = self.http_private.get_tickers(category="linear", symbol=pair)
+        mp = float(tickers["result"]["list"][0]["markPrice"])
+        if inst_info.MinOrderQty * mp < inst_info.MinOrderValue:
+            min_in_money = inst_info.MinOrderValue
+        else:
+            min_in_money = inst_info.MinOrderQty * mp
+        min_in_qty = min_in_money / mp
+        r = {"qty": round(min_in_qty, inst_info.QtyScale), "money": round(min_in_money, inst_info.PriceScale)}
+        if verbose:
+            self.log.info(f"\tmarkPrice current: {mp}")
+            self.log.info(f"\tqty: {r['qty']}")
+            self.log.info(f"\tqty in money: {r['money']}")
+
+        return r
 
     def get_USDT_deposit(self):
         wb = self.http_private.get_wallet_balance(accountType="UNIFIED")
@@ -85,8 +104,9 @@ class StockBybit(IStock):
         ticker_obj = self.get_ticker(pair=pair)
         return ticker_obj.FundingRate
 
-
     def get_instrument_info(self, pair, verbose=False):
+        if verbose:
+            self.log.info(f"Instrument info {pair}:")
         if pair not in self._instrument_infos:
             instr_info = self.http.get_instruments_info(
                 category="linear",
@@ -96,6 +116,16 @@ class StockBybit(IStock):
             r = IInstrumentInfo()
             r.MaxLeverage = float(instr_info["result"]["list"][0]["leverageFilter"]["maxLeverage"])
             r.PriceScale = int(instr_info["result"]["list"][0]["priceScale"])
+            min_qty_raw_str = instr_info["result"]["list"][0]["lotSizeFilter"]["minOrderQty"]
+            r.MinOrderQty = float(min_qty_raw_str)
+            if "." in min_qty_raw_str:
+                r.QtyScale = len(min_qty_raw_str.split(".")[1])
+            else:
+                r.QtyScale = 0
+            r.OrderQtyStep = float(instr_info["result"]["list"][0]["lotSizeFilter"]["qtyStep"])
+            r.MinOrderValue = float(instr_info["result"]["list"][0]["lotSizeFilter"]["minNotionalValue"])
+
+
             if self.demo is False:
                 fee_rates = self.http_private.get_fee_rates(
                     category="linear",
@@ -109,12 +139,18 @@ class StockBybit(IStock):
 
             self._instrument_infos[pair] = r
 
+            # if verbose:
+            #     self.log.info("\t" + json.dumps(instr_info, indent=4))
+
         if verbose:
-            self.log.info(f"Instrument info {pair}:")
             self.log.info(f"\tMaxLeverage: {self._instrument_infos[pair].MaxLeverage}")
             self.log.info(f"\tPriceScale: {self._instrument_infos[pair].PriceScale}")
+            self.log.info(f"\tQtyScale: {self._instrument_infos[pair].QtyScale}")
             self.log.info(f"\tTakerFeeRate: {self._instrument_infos[pair].TakerFeeRate}")
             self.log.info(f"\tMakerFeeRate: {self._instrument_infos[pair].MakerFeeRate}")
+            self.log.info(f"\tMinOrderQty: {self._instrument_infos[pair].MinOrderQty}")
+            self.log.info(f"\tOrderQtyStep: {self._instrument_infos[pair].OrderQtyStep}")
+            self.log.info(f"\tMinOrderValue: {self._instrument_infos[pair].MinOrderValue}")
 
         return self._instrument_infos[pair]
 
@@ -123,9 +159,10 @@ class StockBybit(IStock):
             raise ValueError("amount_money must be > 0. HINT: To close the position use "
                              "close_SHORT_LONG() or open the opposite position")
         pos_info = self.get_position_status(pair=pair)
+        qty = self._amount_money_to_qty(amount_money_add, pair)
         # self.log.info(json5.dumps(pos_info, indent=4))
         if pos_info is None:
-            msg = f"Opening {side} position: {amount_money_add} money on {pair}, stopLoss={stopLoss}, takeProfit={takeProfit}"
+            msg = f"Opening {side} position: ~{amount_money_add} money (qty: {qty}) on {pair}, stopLoss={stopLoss}, takeProfit={takeProfit}"
         else:
             w_msg = []
             if amount_money_add:
@@ -138,7 +175,7 @@ class StockBybit(IStock):
                     w_msg.append(f"takeProfit={takeProfit}")
             if len(w_msg) == 0:
                 raise ValueError("Nothing to do")
-            msg = f"Modifying to {side} position ({pos_info.Size * pos_info.MarkPrice_} money) on {pair}: " + ", ".join(w_msg)
+            msg = f"Modifying to {side} position (~{pos_info.Size * pos_info.MarkPrice_} money (qty: {qty})) on {pair}: " + ", ".join(w_msg)
 
         self.log.info(msg)
 
@@ -150,10 +187,11 @@ class StockBybit(IStock):
         kwrgs = {
             "category": "linear",
             "symbol": pair,
-            "isLeverage": 1,
+            # "isLeverage": 1,  # spot only
             "side": side,
             "orderType": "Market",
-            "qty": self._amount_money_to_qty(amount_money_add, pair),
+            "marketUnit": "baseCoin",  # baseCoin - qty in BTC, quoteCoin - qty in USDT
+            "qty": qty,
             # Used to identify positions in different position modes. Under hedge-mode, this param is required
             # 0: one-way mode
             # 1: hedge-mode Buy side
@@ -357,8 +395,8 @@ class StockBybit(IStock):
             margin_leverage = margin_leverage_pair_max
         # collateral = (qty * entry_price_usdt) / margin_leverage_pair  # init margin
         # TODO: why bankruptcy_price ?  But it returns value that mach with the stock UI
-        fee_to_close = bankruptcy_price * qty * self.get_instrument_info(pair).MakerFeeRate
-        # fee_to_close = last_traded_price * qty * self.get_instrument_info(pair).MakerFeeRate
+        fee_to_close = bankruptcy_price * qty * self.get_instrument_info(pair).TakerFeeRate
+        # fee_to_close = last_traded_price * qty * self.get_instrument_info(pair).TakerFeeRate
         position_margin = collateral + fee_to_close
 
         ROI_or_unrealized_pl_percent = ( unrealized_pl_usdt  / position_margin ) * 100
@@ -408,9 +446,9 @@ class StockBybit(IStock):
         """
         if verbose:
             self.log.info(f"[formula] calculating 'closed_pl_usdt':")
-        fee_to_open = qty * entry_price_usdt * self.get_instrument_info(pair).MakerFeeRate
+        fee_to_open = qty * entry_price_usdt * self.get_instrument_info(pair).TakerFeeRate
         exit_price_usdt = last_traded_price
-        fee_to_close = qty * exit_price_usdt * self.get_instrument_info(pair).MakerFeeRate
+        fee_to_close = qty * exit_price_usdt * self.get_instrument_info(pair).TakerFeeRate
 
         # TODO: should be calculated if taken
         # fee_funding = qty * last_traded_price * funding_rate

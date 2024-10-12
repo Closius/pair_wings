@@ -66,6 +66,18 @@ class IStock:
 
     stream_decorator = staticmethod(stream_decorator)
 
+    def get_min_order_qty_price(self, pair, verbose=False):
+        """
+        By market
+
+        Get minimum allowed qty in coins and equivalent in money for creating the order
+
+        :param pair:
+        :param verbose:
+        :return: {"qty": min_in_qty, "money": min_in_money}
+        """
+        raise NotImplemented()
+
     def get_USDT_deposit(self):
         """
         Return USDT wallet deposit

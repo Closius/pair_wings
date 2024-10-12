@@ -58,11 +58,22 @@ class _base:
 
 
 class IInstrumentInfo(_base):
+    """
+    Taker - open/close by market
+    Maker - open/close by limit (add liquidity)
+    """
     def __init__(self):
         self.MaxLeverage = _Field("MaxLeverage", "REAL", NotImplemented)
+        # for example USDT
         self.PriceScale = _Field("PriceScale", "REAL", NotImplemented)
+        # for example BTC
+        self.QtyScale = _Field("QtyScale", "REAL", NotImplemented)
         self.TakerFeeRate = _Field("TakerFeeRate", "REAL", NotImplemented)
         self.MakerFeeRate = _Field("MakerFeeRate", "REAL", NotImplemented)
+        self.MinOrderQty = _Field("MinOrderQty", "REAL", NotImplemented)
+        self.OrderQtyStep = _Field("OrderQtyStep", "REAL", NotImplemented)
+        # a min price of the amount that can be placed in a single order
+        self.MinOrderValue = _Field("MinOrderValue", "REAL", NotImplemented)
         super().__init__()
 
 

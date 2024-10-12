@@ -17,7 +17,7 @@ from lib.stocks.db_map.map_bybit import MapBybit
 
 def open_add_position(stock, pair, side, percent_from_deposit=1.0, qty=0.01, wait_for_add_second=None, add_qty=0.01):
     log = logging.getLogger(__name__)
-    ticker = stock.get_ticker(pair="BTCUSDT")
+    ticker = stock.get_ticker(pair=pair)
     log.info(f"Opening {side}:")
     log.info(f"\tpair {pair}:")
     log.info(f"\tpercent_from_deposit: {percent_from_deposit}")
@@ -38,6 +38,7 @@ def open_add_position(stock, pair, side, percent_from_deposit=1.0, qty=0.01, wai
                                  takeProfit=takeProfit)
 
     if wait_for_add_second:
+        log.info(f"wait_for_add_second: {wait_for_add_second}")
         time.sleep(wait_for_add_second)
         amount = add_qty * ticker.MarkPrice
         stock.open_modify_SHORT_LONG(side=side, pair=pair,
@@ -74,7 +75,8 @@ def main():
     logging.getLogger().addHandler(logging.StreamHandler())
     log = logging.getLogger(__name__)
 
-    pair = "BTCUSDT"
+    pair = "WIFUSDT"
+    # pair = "BTCUSDT"
 
     log.info("==========================")
     log.info("Choose your destiny:")
@@ -134,7 +136,10 @@ def main():
         position = stock.get_position_status(pair=pair, verbose=True)
     elif r == "8":
         results = {}
-        nos = 5
+        nos = 100
+        min_qty = stock.get_min_order_qty_price(pair=pair, verbose=True)["qty"]
+        precision_qty = stock.get_instrument_info(pair=pair).QtyScale
+        qty = min_qty + round(utils.percentage(percent=100, whole=min_qty), precision_qty)
         for i in range(nos):
             log.info(f"")
             log.info(f"")
@@ -147,9 +152,9 @@ def main():
                     wait_for_add_second = None
                 open_add_position(stock, pair=pair, side=random.choice(["SHORT", "LONG"]),
                                   percent_from_deposit=1, #random.uniform(0.5, 3.0),
-                                  qty=0.01,
+                                  qty=qty,
                                   wait_for_add_second=wait_for_add_second,
-                                  add_qty=0.01)
+                                  add_qty=qty)
                 wait_for_close_seconds = random.randint(10, 30)
                 log.info(f"wait_for_close_seconds: {wait_for_close_seconds}")
                 time.sleep(wait_for_close_seconds)
