@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import queue
 import random
 import statistics
 import logging
@@ -184,16 +185,30 @@ def random_trade_plot_results(results, pair, folder=None, save_only=True):
 
 
 def main(pairs, stock, num_steps):
+    log = logging.getLogger()
     def one_pair(pair, stock, n_steps, folder):
         results = random_trade(pair=pair, stock=stock, n_steps=n_steps, folder=folder)
         random_trade_plot_results(results, pair=pair, folder=folder, save_only=True)
 
+    number_of_pairs_in_simultaneous_trade = 3
+    log.info(f"number_of_pairs_in_simultaneous_trade: {number_of_pairs_in_simultaneous_trade}")
+    log.info(f"")
+
     with ThreadPoolExecutor(max_workers=None) as executor:
-        for pair in pairs:
-            future = executor.submit(
+        pairs_in_trade = {}
+        while pairs:
+            pair = pairs.pop(0)
+            pairs_in_trade[pair] = executor.submit(
                 one_pair,
                 pair=pair,
                 stock=stock,
                 n_steps=num_steps,
                 folder="results"
             )
+            log.info(f"launch: {pair}")
+            while len(pairs_in_trade) >= number_of_pairs_in_simultaneous_trade:
+                for pair, future in pairs_in_trade.items():
+                    if future.done():
+                        pairs_in_trade.pop(pair)
+                        log.info(f"finished: {pair}")
+                        break
