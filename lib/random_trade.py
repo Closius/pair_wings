@@ -184,15 +184,11 @@ def random_trade_plot_results(results, pair, folder=None, save_only=True):
         plt.show()
 
 
-def main(pairs, stock, num_steps):
+def main(pairs, stock, num_steps, number_of_pairs_in_simultaneous_trade):
     log = logging.getLogger()
     def one_pair(pair, stock, n_steps, folder):
         results = random_trade(pair=pair, stock=stock, n_steps=n_steps, folder=folder)
         random_trade_plot_results(results, pair=pair, folder=folder, save_only=True)
-
-    number_of_pairs_in_simultaneous_trade = 3
-    log.info(f"number_of_pairs_in_simultaneous_trade: {number_of_pairs_in_simultaneous_trade}")
-    log.info(f"")
 
     with ThreadPoolExecutor(max_workers=None) as executor:
         pairs_in_trade = {}
