@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 
 import json5
@@ -7,7 +8,7 @@ import numpy as np
 from pybit.unified_trading import WebSocket
 from pybit.unified_trading import HTTP
 
-from lib.stocks.stock_interface import IStock
+from lib.stocks.stock_interface import IStock, atomic_in_threads
 from lib import utils
 
 from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTicker, IOrderBook, IPosition,
@@ -16,19 +17,12 @@ from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTick
 
 class StockBybit(IStock):
 
-    """
-    Makers initiate orders, adding liquidity to the market,
-    while takers execute these orders, consuming liquidity
-
-    VIP 0 Perpetual & Futures Contracts Trading
-    in %
-    """
-
     CROSS_MARGIN = True
 
     def __init__(self, map: IMap, account_name=None, api_secrets_file=None, settings_file=None, demo=True):
         super().__init__(map=map)
-        self.log.info(f"Connecting to public Bybit ...")
+        self.log_stock = logging.getLogger()
+        self.log_stock.info(f"Connecting to public Bybit ...")
         self.demo = demo
         self.http = HTTP(demo=True)
         self.http_private = None
@@ -37,15 +31,15 @@ class StockBybit(IStock):
             channel_type="linear"
         )
         if account_name:
-            self.log.info(f"Connecting to private Bybit: {account_name} ...")
+            self.log_stock.info(f"Connecting to private Bybit: {account_name} ...")
 
             with open(api_secrets_file) as f:
                 api_secrets = json5.load(f)
             with open(settings_file) as f:
                 settings = json5.load(f)
 
-            # self.log.info("Current settings:")
-            # self.log.info(json5.dumps(settings, indent=4))
+            # self.log_stock.info("Current settings:")
+            # self.log_stock.info(json5.dumps(settings, indent=4))
 
             # You can create an authenticated or unauthenticated HTTP session.
             # You can skip authentication by not passing any value for the key and secret.
@@ -63,21 +57,23 @@ class StockBybit(IStock):
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
             )
 
-    def _amount_money_to_qty(self, amount_money, symbol):
+    def _amount_money_to_qty(self, amount_money, pair):
         """
         https://bybit-exchange.github.io/docs/v5/market/tickers
         """
-        tickers = self.http_private.get_tickers(category="linear", symbol=symbol)
+        log = logging.getLogger(pair)
+        tickers = self.http_private.get_tickers(category="linear", symbol=pair)
         mp = float(tickers["result"]["list"][0]["markPrice"])
         qty = amount_money / mp
-        self.log.info(f"value_to_qty {symbol} price {mp}: {amount_money} -> {qty}")
-        precision_qty = self.get_instrument_info(pair=symbol, verbose=False).QtyScale
+        log.info(f"value_to_qty {pair} price {mp}: {amount_money} -> {qty}")
+        precision_qty = self.get_instrument_info(pair=pair, verbose=False).QtyScale
         qty = round(qty, precision_qty)
         return qty
 
     def get_min_order_qty_price(self, pair, verbose=False):
+        log = logging.getLogger(pair)
         if verbose:
-            self.log.info(f"Minimum order limits {pair}:")
+            log.info(f"Minimum order limits {pair}:")
         inst_info = self.get_instrument_info(pair=pair, verbose=False)
         tickers = self.http_private.get_tickers(category="linear", symbol=pair)
         mp = float(tickers["result"]["list"][0]["markPrice"])
@@ -88,9 +84,9 @@ class StockBybit(IStock):
         min_in_qty = min_in_money / mp
         r = {"qty": round(min_in_qty, inst_info.QtyScale), "money": round(min_in_money, inst_info.PriceScale)}
         if verbose:
-            self.log.info(f"\tmarkPrice current: {mp}")
-            self.log.info(f"\tqty: {r['qty']}")
-            self.log.info(f"\tqty in money: {r['money']}")
+            log.info(f"\tmarkPrice current: {mp}")
+            log.info(f"\tqty: {r['qty']}")
+            log.info(f"\tqty in money: {r['money']}")
 
         return r
 
@@ -105,8 +101,9 @@ class StockBybit(IStock):
         return ticker_obj.FundingRate
 
     def get_instrument_info(self, pair, verbose=False):
+        log = logging.getLogger(pair)
         if verbose:
-            self.log.info(f"Instrument info {pair}:")
+            log.info(f"Instrument info {pair}:")
         if pair not in self._instrument_infos:
             instr_info = self.http.get_instruments_info(
                 category="linear",
@@ -125,7 +122,8 @@ class StockBybit(IStock):
             r.OrderQtyStep = float(instr_info["result"]["list"][0]["lotSizeFilter"]["qtyStep"])
             r.MinOrderValue = float(instr_info["result"]["list"][0]["lotSizeFilter"]["minNotionalValue"])
 
-
+            # Makers initiate orders, adding liquidity to the market,
+            # while takers execute these orders, consuming liquidity
             if self.demo is False:
                 fee_rates = self.http_private.get_fee_rates(
                     category="linear",
@@ -140,27 +138,29 @@ class StockBybit(IStock):
             self._instrument_infos[pair] = r
 
             # if verbose:
-            #     self.log.info("\t" + json.dumps(instr_info, indent=4))
+            #     log.info("\t" + json.dumps(instr_info, indent=4))
 
         if verbose:
-            self.log.info(f"\tMaxLeverage: {self._instrument_infos[pair].MaxLeverage}")
-            self.log.info(f"\tPriceScale: {self._instrument_infos[pair].PriceScale}")
-            self.log.info(f"\tQtyScale: {self._instrument_infos[pair].QtyScale}")
-            self.log.info(f"\tTakerFeeRate: {self._instrument_infos[pair].TakerFeeRate}")
-            self.log.info(f"\tMakerFeeRate: {self._instrument_infos[pair].MakerFeeRate}")
-            self.log.info(f"\tMinOrderQty: {self._instrument_infos[pair].MinOrderQty}")
-            self.log.info(f"\tOrderQtyStep: {self._instrument_infos[pair].OrderQtyStep}")
-            self.log.info(f"\tMinOrderValue: {self._instrument_infos[pair].MinOrderValue}")
+            log.info(f"\tMaxLeverage: {self._instrument_infos[pair].MaxLeverage}")
+            log.info(f"\tPriceScale: {self._instrument_infos[pair].PriceScale}")
+            log.info(f"\tQtyScale: {self._instrument_infos[pair].QtyScale}")
+            log.info(f"\tTakerFeeRate: {self._instrument_infos[pair].TakerFeeRate}")
+            log.info(f"\tMakerFeeRate: {self._instrument_infos[pair].MakerFeeRate}")
+            log.info(f"\tMinOrderQty: {self._instrument_infos[pair].MinOrderQty}")
+            log.info(f"\tOrderQtyStep: {self._instrument_infos[pair].OrderQtyStep}")
+            log.info(f"\tMinOrderValue: {self._instrument_infos[pair].MinOrderValue}")
 
         return self._instrument_infos[pair]
 
+    @atomic_in_threads(IStock.GET_FACT_EARN_NET_rwlock, "OBEY")
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
+        log = logging.getLogger(pair)
         if amount_money_add and amount_money_add <= 0:
             raise ValueError("amount_money must be > 0. HINT: To close the position use "
                              "close_SHORT_LONG() or open the opposite position")
         pos_info = self.get_position_status(pair=pair)
         qty = self._amount_money_to_qty(amount_money_add, pair)
-        # self.log.info(json5.dumps(pos_info, indent=4))
+        # log.info(json5.dumps(pos_info, indent=4))
         if pos_info is None:
             msg = f"Opening {side} position: ~{amount_money_add} money (qty: {qty}) on {pair}, stopLoss={stopLoss}, takeProfit={takeProfit}"
         else:
@@ -177,7 +177,7 @@ class StockBybit(IStock):
                 raise ValueError("Nothing to do")
             msg = f"Modifying to {side} position (~{pos_info.Size * pos_info.MarkPrice_} money (qty: {qty})) on {pair}: " + ", ".join(w_msg)
 
-        self.log.info(msg)
+        log.info(msg)
 
         if side == "LONG":
             side = "Buy"
@@ -211,10 +211,11 @@ class StockBybit(IStock):
         # Place an order on that USDT Perpetual
         orderId = self.http_private.place_order(**kwrgs)['result']['orderId']
 
-        self.log.info(f"<< Completed >>. {msg}")
+        log.info(f"<< Completed >>. {msg}")
 
         return orderId
 
+    @atomic_in_threads(IStock.GET_FACT_EARN_NET_rwlock, "ATOMIC")
     def close_SHORT_LONG(self, pair, amount_percent=100):
         """
         Close by market price
@@ -224,8 +225,9 @@ class StockBybit(IStock):
         :param uid:
         :return:
         """
+        log = logging.getLogger(pair)
         msg = f"Closing position: {amount_percent} % on {pair}"
-        self.log.info(msg)
+        log.info(msg)
         if (amount_percent > 100) or (amount_percent <= 0):
             raise ValueError(f"amount_percent should be 100>x>=0")
         pos_info = self.get_position_status(pair=pair)
@@ -236,18 +238,20 @@ class StockBybit(IStock):
         side = pos_info.Side
         size_to_close = "Sell" if side == "LONG" else "Buy"
 
+        balance_init = self.get_USDT_deposit()
+
         # https://stackoverflow.com/questions/71056977/how-can-i-closing-my-position-with-using-market-order-via-bybit-api
         orderId = self.http_private.place_order(
-                category="linear",
-                symbol=pair,
-                side=size_to_close,
-                orderType="Market",
-                qty=size_coins_to_close,
-                # https://www.bybit.com/en/help-center/article/What-Are-Time-In-Force-TIF-GTC-IOC-FOK
-                timeInForce="GTC",
-                reduceOnly=True,
-                closeOnTrigger=False
-            )['result']['orderId']
+            category="linear",
+            symbol=pair,
+            side=size_to_close,
+            orderType="Market",
+            qty=size_coins_to_close,
+            # https://www.bybit.com/en/help-center/article/What-Are-Time-In-Force-TIF-GTC-IOC-FOK
+            timeInForce="GTC",
+            reduceOnly=True,
+            closeOnTrigger=False
+        )['result']['orderId']
 
         current_order_size = None
         while (original_position_size - size_coins_to_close) != current_order_size:
@@ -257,8 +261,11 @@ class StockBybit(IStock):
             time.sleep(0.5)
             current_order_size = pos_info.Size
 
-        self.log.info(f"<< Completed >>. {msg}")
-
+        balance_end = self.get_USDT_deposit()
+        earn_net = balance_end - balance_init
+        log.info(f"Earned netto (the fact from stock): {earn_net}")
+        log.info(f"<< Completed >>. {msg}")
+        return earn_net
 
     def formula_AEP(self, entry_qty_price_list: list):
         """
@@ -266,14 +273,11 @@ class StockBybit(IStock):
 
         https://www.bybit.com/en/help-center/article/Profit-Loss-calculations-USDT-ContractUSDT_Perpetual_UTA
 
-        :return:
-        """
-        """
             Average entry price = Total contract value in USDT/Total quantity of contracts
             Total contract value in USDT = ( (Quantity1 x Price1) + (Quantity2 x Price2)...)
             By using the figures above:
 
-            Total contract value in USDT 
+            Total contract value in USDT
             = ( (Quantity1 x Price1) + (Quantity2 x Price2) )
             = ( (0.5 x 5,000) + (0.3 x 6,000) )
             = 4300
@@ -284,6 +288,7 @@ class StockBybit(IStock):
              = 4,300 / 0.8
             = 5,375
 
+        :return:
         """
         total_contract_value_in_usdt = 0
         total_quantity_contracts = 0
@@ -306,23 +311,24 @@ class StockBybit(IStock):
         """
             https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
         """
+        log = logging.getLogger(pair)
         if verbose:
-            self.log.info(f"[formula] common input:")
-            self.log.info(f"[formula] \taverage_entry_price_usdt: {average_entry_price_usdt}")
-            self.log.info(f"[formula] \tlast_traded_price: {last_traded_price}")
-            self.log.info(f"[formula] \tqty: {qty}")
-            self.log.info(f"[formula] \tmargin_leverage_pair: {margin_leverage_pair}")
-            self.log.info(f"[formula] \tmargin_leverage_pair_max: {margin_leverage_pair_max}")
-            self.log.info(f"[formula] \tfunding_rate: {funding_rate}")
-            self.log.info(f"[formula] \tposition_side: {side}")
+            log.info(f"[formula] common input:")
+            log.info(f"[formula] \taverage_entry_price_usdt: {average_entry_price_usdt}")
+            log.info(f"[formula] \tlast_traded_price: {last_traded_price}")
+            log.info(f"[formula] \tqty: {qty}")
+            log.info(f"[formula] \tmargin_leverage_pair: {margin_leverage_pair}")
+            log.info(f"[formula] \tmargin_leverage_pair_max: {margin_leverage_pair_max}")
+            log.info(f"[formula] \tfunding_rate: {funding_rate}")
+            log.info(f"[formula] \tposition_side: {side}")
 
         if verbose:
-            self.log.info(f"[formula] calculating 'unrealized_pl_usdt':")
+            log.info(f"[formula] calculating 'unrealized_pl_usdt':")
         entry_price_usdt = average_entry_price_usdt
         position_side = utils.position_side(side)
         unrealized_pl_usdt = qty * position_side * (last_traded_price - entry_price_usdt)
         if verbose:
-            self.log.info(f"[formula] \tunrealized_pl_usdt: {unrealized_pl_usdt}")
+            log.info(f"[formula] \tunrealized_pl_usdt: {unrealized_pl_usdt}")
 
         """
             https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
@@ -339,7 +345,7 @@ class StockBybit(IStock):
         """
 
         if verbose:
-            self.log.info(f"[formula] calculating 'bankruptcy_price':")
+            log.info(f"[formula] calculating 'bankruptcy_price':")
         collateral = (qty * entry_price_usdt) / margin_leverage_pair  # init margin
         # total_account_value = collateral + unrealized_pl_usdt
         # bankruptcy_price_common_calc = last_traded_price - position_side * (total_account_value / qty)
@@ -348,12 +354,12 @@ class StockBybit(IStock):
         bankruptcy_price_max_lev = entry_price_usdt * (1 - position_side * (1 / margin_leverage_pair_max))
 
         if verbose:
-            self.log.info(f"[formula] \tcollateral (init margin): {collateral}")
-            self.log.info(f"[formula] \tcollateral (init margin) based on max leverage: {(qty * entry_price_usdt) / margin_leverage_pair_max}")
-            # self.log.info(f"[formula] \ttotal_account_value: {total_account_value}")
-            # self.log.info(f"[formula] \tbankruptcy_price_common_calc: {bankruptcy_price_common_calc}")
-            self.log.info(f"[formula] \tbankruptcy_price: {bankruptcy_price}")
-            self.log.info(f"[formula] \tbankruptcy_price based on max leverage: {bankruptcy_price_max_lev}")
+            log.info(f"[formula] \tcollateral (init margin): {collateral}")
+            log.info(f"[formula] \tcollateral (init margin) based on max leverage: {(qty * entry_price_usdt) / margin_leverage_pair_max}")
+            # log.info(f"[formula] \ttotal_account_value: {total_account_value}")
+            # log.info(f"[formula] \tbankruptcy_price_common_calc: {bankruptcy_price_common_calc}")
+            log.info(f"[formula] \tbankruptcy_price: {bankruptcy_price}")
+            log.info(f"[formula] \tbankruptcy_price based on max leverage: {bankruptcy_price_max_lev}")
 
         """
             https://www.bybit.com/en/help-center/article/Profit-Loss-calculations-USDT-ContractUSDT_Perpetual_UTA
@@ -387,8 +393,34 @@ class StockBybit(IStock):
             Unrealized P&L% = Unrealized P&L /(initial margin + fee to close) X 100%
             
         """
+        """
+            Why ROI is important? 
+            
+            P&L is short for Profit and Losses. It is the statement that indicates how much you earned, 
+            how much it cost you to make that earning, and what the net result is (i.e. a profit or a loss). 
+            A very widely used index is the profit/loss as a percentage of your main income source 
+            (eg sales of goods, revenue on services rendered, etc.). That way you make companies 
+            with different sizes, currencies, etc. comparable. The P&L, however, does not indicate 
+            how much investment you had to make to generate such results.
+    
+            This is where the ROI comes in. With the P&L bottom line number (the net gain from your 
+            operations in a given timeframe), you can can compare how much return you had on your assets 
+            invested. E.g. just saying that you had a $1 million profit doesn't tell how good your 
+            investment is. You need to know how much money you allocated to the business/investment 
+            to create the profit. If you need $1billion invested in your business to generate 
+            $1 million, I'd rather buy 100 million in US government bonds and haver a much higher ROI.
+            
+            Profit and loss is just how much money you made (or lost). It is stated in absolute terms, 
+            not as a percentage of your investment. ROI is stated in terms of your investment 
+            and your timeline.
+
+            Earning $1,000 would be great if your initial investment was $10 and you made the money in 
+            a year. Earning $1,000 would be terrible if your initial investment was $1MM and you 
+            made the money over five years.
+        """
+
         if verbose:
-            self.log.info(f"[formula] calculating 'ROI_or_unrealized_pl_percent':")
+            log.info(f"[formula] calculating 'ROI_or_unrealized_pl_percent':")
 
         # TODO: investigate if it should be used the max margin for collateral calculation
         if self.CROSS_MARGIN:
@@ -399,12 +431,12 @@ class StockBybit(IStock):
         # fee_to_close = last_traded_price * qty * self.get_instrument_info(pair).TakerFeeRate
         position_margin = collateral + fee_to_close
 
-        ROI_or_unrealized_pl_percent = ( unrealized_pl_usdt  / position_margin ) * 100
+        ROI_or_unrealized_pl_percent = (unrealized_pl_usdt / position_margin) * 100
 
         if verbose:
-            self.log.info(f"[formula] \tfee_to_close (based on bankruptcy_price): {fee_to_close}")
-            self.log.info(f"[formula] \tposition_margin: {position_margin}")
-            self.log.info(f"[formula] \tROI_or_unrealized_pl_percent: {ROI_or_unrealized_pl_percent}")
+            log.info(f"[formula] \tfee_to_close (based on bankruptcy_price): {fee_to_close}")
+            log.info(f"[formula] \tposition_margin: {position_margin}")
+            log.info(f"[formula] \tROI_or_unrealized_pl_percent: {ROI_or_unrealized_pl_percent}")
 
         """
             Closed P&L   
@@ -445,7 +477,7 @@ class StockBybit(IStock):
             
         """
         if verbose:
-            self.log.info(f"[formula] calculating 'closed_pl_usdt':")
+            log.info(f"[formula] calculating 'closed_pl_usdt':")
         fee_to_open = qty * entry_price_usdt * self.get_instrument_info(pair).TakerFeeRate
         exit_price_usdt = last_traded_price
         fee_to_close = qty * exit_price_usdt * self.get_instrument_info(pair).TakerFeeRate
@@ -457,15 +489,14 @@ class StockBybit(IStock):
         closed_pl_usdt = unrealized_pl_usdt - fee_to_open - fee_to_close - fee_funding
 
         if verbose:
-            self.log.info(f"[formula] \tfee_funding: {fee_funding}")
-            self.log.info(f"[formula] \tfee_to_open: {fee_to_open}")
-            self.log.info(f"[formula] \tfee_to_close: {fee_to_close}")
-            self.log.info(f"[formula] \tclosed_pl_usdt: {closed_pl_usdt}")
+            log.info(f"[formula] \tfee_funding: {fee_funding}")
+            log.info(f"[formula] \tfee_to_open: {fee_to_open}")
+            log.info(f"[formula] \tfee_to_close: {fee_to_close}")
+            log.info(f"[formula] \tclosed_pl_usdt: {closed_pl_usdt}")
 
         return {"Unrealized_PL_Money": unrealized_pl_usdt,
-             "ROI_percent": ROI_or_unrealized_pl_percent,
-             "Closed_PL_Money": closed_pl_usdt}
-
+                "ROI_percent": ROI_or_unrealized_pl_percent,
+                "Closed_PL_Money": closed_pl_usdt}
 
     def get_history_tohlcv(self, pair, interval, start, end=None):
         kargs = {
@@ -491,7 +522,7 @@ class StockBybit(IStock):
 
     def get_ticker(self, pair):
         message = self.http_private.get_tickers(category="linear",
-            symbol=pair)
+                                                symbol=pair)
 
         response = ITicker()
         response.Time = utils.ts_to_datetime(message["time"])
@@ -503,21 +534,30 @@ class StockBybit(IStock):
                 setattr(response, k, float(message[v.api_name]))
         return response
 
+    def get_all_pairs(self):
+        message = self.http_private.get_tickers(category="linear")
+        pairs = []
+        for m in message["result"]["list"]:
+            pairs.append(m["symbol"])
+
+        return pairs
+
     def get_position_status(self, pair, verbose=False):
+        log = logging.getLogger(pair)
         pos_info = self.http_private.get_positions(
             category="linear",
             symbol=pair,
         )
         if (len(pos_info["result"]["list"]) == 0) or (pos_info["result"]["list"][0]["size"] == "0"):
             if verbose:
-                self.log.info("No position opened")
+                log.info("No position opened")
             return None
         data = pos_info["result"]["list"][0]
         if verbose:
-            self.log.info(f"Position on {pair}:")
-            self.log.info(f"initial margin (from stock): {data['positionIM']}")
-            self.log.info(f"Bankruptcy price (from stock): {data['bustPrice']}")
-            # self.log.info(json.dumps(data, indent=4))
+            log.info(f"Position on {pair}:")
+            log.info(f"initial margin (from stock): {data['positionIM']}")
+            log.info(f"Bankruptcy price (from stock): {data['bustPrice']}")
+            # log.info(json.dumps(data, indent=4))
         response = IPosition()
         response.CreatedTime = utils.ts_to_datetime(data[self.map.position.CreatedTime.api_name])
         response.UpdatedTime = utils.ts_to_datetime(data[self.map.position.UpdatedTime.api_name])
@@ -546,15 +586,15 @@ class StockBybit(IStock):
         response.Closed_PL_Money = pl_dict["Closed_PL_Money"]
 
         if verbose:
-            # self.log.info("ProfitLoss (calculated):")
-            self.log.info(f"\tUnrealized_PL_Money: {response.Unrealized_PL_Money}")
-            self.log.info(f"\tROI_percent: {response.ROI_percent}")
-            self.log.info(f"\tClosed_PL_Money: {response.Closed_PL_Money}")
+            # log.info("ProfitLoss (calculated):")
+            log.info(f"\tUnrealized_PL_Money: {response.Unrealized_PL_Money}")
+            log.info(f"\tROI_percent: {response.ROI_percent}")
+            log.info(f"\tClosed_PL_Money: {response.Closed_PL_Money}")
 
-            self.log.info("ProfitLoss (from stock):")
-            self.log.info(f"\tUnrealised PnL: {data['unrealisedPnl']}")
-            self.log.info(f"\tThe realised PnL for the current holding position: {data['curRealisedPnl']}")
-            # self.log.info(f"\tAll time cumulative realised P&L: {data['cumRealisedPnl']}")
+            log.info("ProfitLoss (from stock):")
+            log.info(f"\tUnrealised PnL: {data['unrealisedPnl']}")
+            log.info(f"\tThe realised PnL for the current holding position: {data['curRealisedPnl']}")
+            # log.info(f"\tAll time cumulative realised P&L: {data['cumRealisedPnl']}")
 
         return response
 
@@ -564,6 +604,8 @@ class StockBybit(IStock):
         https://bybit-exchange.github.io/docs/v5/websocket/public/kline
         """
 
+        log = logging.getLogger(pair)
+
         def handle_kline(message):
             # reformat
             try:
@@ -571,15 +613,17 @@ class StockBybit(IStock):
                 response = ICandleTicker()
                 for k, v in self.map.candle_ticker.init_fields.items():
                     if v.db_name in [self.map.candle_ticker.Time.db_name,
-                                   self.map.candle_ticker.Start.db_name,
-                                   self.map.candle_ticker.End.db_name]:
+                                     self.map.candle_ticker.Start.db_name,
+                                     self.map.candle_ticker.End.db_name]:
                         setattr(response, k, utils.ts_to_datetime(data[v.api_name]))
                     else:
                         setattr(response, k, data[v.api_name])
 
                 handler(response, **handler_kwargs)
             except Exception as ex:
-                self.log.exception(ex)
+                log.exception(ex)
+                self.log_stock.error(f"Happened on {pair}")
+                self.log_stock.exception(ex)
 
         self.ws.kline_stream(interval, pair, handle_kline)
 
@@ -588,7 +632,7 @@ class StockBybit(IStock):
 
     @IStock.stream_decorator
     def stream_ticker(self, handler, handler_kwargs, stop_event, pair):
-
+        log = logging.getLogger(pair)
         def handle_ticker(message):
             # reformat
             try:
@@ -602,7 +646,9 @@ class StockBybit(IStock):
 
                 handler(response, **handler_kwargs)
             except Exception as ex:
-                self.log.exception(ex)
+                log.exception(ex)
+                self.log_stock.error(f"Happened on {pair}")
+                self.log_stock.exception(ex)
 
         self.ws.ticker_stream(pair, handle_ticker)
 
@@ -614,6 +660,8 @@ class StockBybit(IStock):
         """
             https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
         """
+
+        log = logging.getLogger(pair)
 
         def handle_ticker(message):
             handle_ticker.asks_d_snapshot = None
@@ -646,16 +694,16 @@ class StockBybit(IStock):
                 response.Time = utils.ts_to_datetime(message["ts"])
 
                 handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Asks.api_name],
-                                                    is_snapshot=is_snapshot,
-                                                    big_snapshot=handle_ticker.asks_d_snapshot)
+                                                                         is_snapshot=is_snapshot,
+                                                                         big_snapshot=handle_ticker.asks_d_snapshot)
                 if handle_ticker.asks_d_snapshot is None:
                     return
                 else:
                     response.Asks = np.array([[p,v] for p,v in handle_ticker.asks_d_snapshot.items()])
 
                 handle_ticker.bids_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Bids.api_name],
-                                                    is_snapshot=is_snapshot,
-                                                    big_snapshot=handle_ticker.bids_d_snapshot)
+                                                                         is_snapshot=is_snapshot,
+                                                                         big_snapshot=handle_ticker.bids_d_snapshot)
                 if handle_ticker.bids_d_snapshot is None:
                     return
                 else:
@@ -663,7 +711,9 @@ class StockBybit(IStock):
 
                 handler(response, **handler_kwargs)
             except Exception as ex:
-                self.log.exception(ex)
+                log.exception(ex)
+                self.log_stock.error(f"Happened on {pair}")
+                self.log_stock.exception(ex)
 
         self.ws.orderbook_stream(depth=50, symbol=pair, callback=handle_ticker)
 

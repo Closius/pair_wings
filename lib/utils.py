@@ -1,5 +1,7 @@
 import datetime
 import threading
+import logging
+import os
 
 
 DATA_FORMAT = '%d.%m.%Y %H:%M:%S,%f'
@@ -81,3 +83,28 @@ class Singleton(type):
             if cls not in cls._instances[threading.get_ident()]:
                 cls._instances[threading.get_ident()][cls] = super().__call__(*args, **kwargs)
         return cls._instances[threading.get_ident()][cls]
+
+
+def setup_logger(name, log_file, level=logging.INFO, stream=False):
+    if os.path.exists(log_file):
+        os.remove(log_file)
+    formatter_file = logging.Formatter('%(asctime)s: %(message)s')
+    formatter_main = logging.Formatter('%(asctime)s %(name)s: %(message)s')
+    handler_f = logging.FileHandler(log_file)
+    handler_s = logging.StreamHandler()
+    handler_f.setFormatter(formatter_file)
+    handler_s.setFormatter(formatter_main)
+    if name == "":
+        logger = logging.getLogger()
+    else:
+        logger = logging.getLogger(name)
+
+    logger.addHandler(handler_f)
+    if stream:
+        logger.addHandler(handler_s)
+    logger.setLevel(level)
+    logger.propagate = False
+
+    return logger
+
+

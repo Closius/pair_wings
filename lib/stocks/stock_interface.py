@@ -1,4 +1,5 @@
 import logging
+import functools
 import queue
 import threading
 from typing import List
@@ -7,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTicker, IOrderBook,
                                              IPosition, IInstrumentInfo)
+from lib.rwlock import RWLock
 
 
 class StockNotification:
@@ -31,6 +33,34 @@ class StockNotification:
         self._data = value
 
 
+def atomic_in_threads(rwlock: RWLock, side):
+    """
+    Decorator
+
+    ATOMIC - Make `func` atomic relatively to OBEYs and other `func` in different threads
+
+    OBEY - `func` will wait until all ATOMICs will be finished
+
+    :param side: OBEY/ATOMIC
+    :param rwlock: RWLock() object. Should be the same for one group of readers/writers
+    """
+    def inner(func):
+        def _decorator(*args, **kwargs):
+            try:
+                if side == "ATOMIC":
+                    with rwlock.w_locked():
+                        response = func(*args, **kwargs)
+                if side == "OBEY":
+                    with rwlock.r_locked():
+                        response = func(*args, **kwargs)
+            except Exception as ex:
+                logging.getLogger().exception(ex)
+            else:
+                return response
+        return functools.wraps(func)(_decorator)
+    return inner
+
+
 class IStock:
     """
         Methods return data according to the implementation of IMap (DB names)
@@ -38,8 +68,10 @@ class IStock:
         only trading on derivatives (futures)!
     """
 
+    GET_FACT_EARN_NET_rwlock = RWLock()
+
     def __init__(self, map: IMap):
-        self.log = logging.getLogger(__name__)
+        self.log_stock = None  # logging.getLogger(__name__)
         # for example to notify that the order has been fulfilled
         self.notifications_queue = queue.Queue()
         self.map = map
@@ -106,7 +138,7 @@ class IStock:
         """
         raise NotImplemented()
 
-
+    @atomic_in_threads(GET_FACT_EARN_NET_rwlock, "OBEY")
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
         """
         By market
@@ -133,7 +165,8 @@ class IStock:
         """
         raise NotImplemented()
 
-    def close_SHORT_LONG(self, pair, amount_percent=100):
+    @atomic_in_threads(GET_FACT_EARN_NET_rwlock, "ATOMIC")
+    def close_SHORT_LONG(self, pair, amount_percent=100) -> float:
         """
         By market
 
@@ -144,7 +177,7 @@ class IStock:
         GTC is suitable for traders who are willing to wait for all contracts to be completed at
         a specified price and can flexibly cancel unconcluded contracts at any time.
 
-        :return:
+        :return: earn_fact_net = balance_end - balance_init
         """
         raise NotImplemented()
 
@@ -192,6 +225,14 @@ class IStock:
 
         :param pair:
         :return: ITicker
+        """
+        raise NotImplemented()
+
+    def get_all_pairs(self) -> List[str]:
+        """
+        get all available pairs
+
+        :return:
         """
         raise NotImplemented()
 
@@ -246,4 +287,3 @@ class IStock:
         :return to `handler` IPosition
         """
         raise NotImplemented()
-
