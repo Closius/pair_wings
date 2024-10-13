@@ -190,8 +190,11 @@ def main(pairs, stock, num_steps, number_of_pairs_in_simultaneous_trade):
         results = random_trade(pair=pair, stock=stock, n_steps=n_steps, folder=folder)
         random_trade_plot_results(results, pair=pair, folder=folder, save_only=True)
 
+    total_pairs = len(pairs)
+
     with ThreadPoolExecutor(max_workers=None) as executor:
         pairs_in_trade = {}
+        i = 1
         while pairs:
             pair = pairs.pop(0)
             pairs_in_trade[pair] = executor.submit(
@@ -201,10 +204,10 @@ def main(pairs, stock, num_steps, number_of_pairs_in_simultaneous_trade):
                 n_steps=num_steps,
                 folder="results"
             )
-            log.info(f"launch: {pair}")
+            log.info(f"launch {i} of {total_pairs}: {pair}")
             while len(pairs_in_trade) >= number_of_pairs_in_simultaneous_trade:
                 for pair, future in pairs_in_trade.items():
                     if future.done():
                         pairs_in_trade.pop(pair)
-                        log.info(f"finished: {pair}")
+                        log.info(f"finished {i} of {total_pairs}: {pair}")
                         break
