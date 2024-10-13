@@ -80,9 +80,6 @@ def main():
         pairs_USDT_only = [pair for pair in pairs if pair.endswith("USDT")]
 
         number_of_pairs_in_simultaneous_trade = 10
-        log.info(f"pairs for test {len(pairs_USDT_only)}: {pairs_USDT_only}")
-        log.info(f"number_of_pairs_in_simultaneous_trade: {number_of_pairs_in_simultaneous_trade}")
-        log.info(f"")
         random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=100,
                           number_of_pairs_in_simultaneous_trade=number_of_pairs_in_simultaneous_trade)
 

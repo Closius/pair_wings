@@ -192,6 +192,16 @@ def main(pairs, stock, num_steps, number_of_pairs_in_simultaneous_trade):
 
     total_pairs = len(pairs)
 
+    log.info(f"")
+    log.info(f"")
+    log.info(f"                   RANDOM TRADE")
+    log.info(f"")
+    log.info(f"")
+    log.info(f"pairs for test {total_pairs}: {pairs}")
+    log.info(f"num_steps: {num_steps}")
+    log.info(f"number_of_pairs_in_simultaneous_trade: {number_of_pairs_in_simultaneous_trade}")
+    log.info(f"")
+
     with ThreadPoolExecutor(max_workers=None) as executor:
         pairs_in_trade = {}
         i = 1
@@ -205,9 +215,10 @@ def main(pairs, stock, num_steps, number_of_pairs_in_simultaneous_trade):
                 folder="results"
             )
             log.info(f"launch {i} of {total_pairs}: {pair}")
+            i += 1
             while len(pairs_in_trade) >= number_of_pairs_in_simultaneous_trade:
                 for pair, future in pairs_in_trade.items():
                     if future.done():
                         pairs_in_trade.pop(pair)
-                        log.info(f"finished {i} of {total_pairs}: {pair}")
+                        log.info(f"finished: {pair}")
                         break
