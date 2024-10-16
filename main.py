@@ -77,10 +77,7 @@ def main():
 
         pairs_USDT_only = [pair for pair in pairs if pair.endswith("USDT")]
         pairs_USDT_only = pairs_USDT_only[:100]  # first N
-        # TODO: figure out how to increase this
-        number_of_pairs_in_simultaneous_trade = 10
-        random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=10,
-                          number_of_pairs_in_simultaneous_trade=number_of_pairs_in_simultaneous_trade)
+        random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=10)
 
     elif r == "9":
         pairs = stock.get_all_pairs()

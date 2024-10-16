@@ -17,6 +17,8 @@ from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTick
 # https://bybit-exchange.github.io/docs/v5/rate-limit
 from lib.rate_limit import rate_limit_sleep_retry
 
+# TODO: Rate limit should be applied on the backend functions directly
+
 
 class StockBybit(IStock):
 

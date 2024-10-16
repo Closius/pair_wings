@@ -184,7 +184,7 @@ def random_trade_plot_results(results, pair, folder=None, save_only=True):
         plt.show()
 
 
-def main(pairs, stock, num_steps, number_of_pairs_in_simultaneous_trade):
+def main(pairs, stock, num_steps):
     log = logging.getLogger()
     def one_pair(pair, stock, n_steps, folder):
         results = random_trade(pair=pair, stock=stock, n_steps=n_steps, folder=folder)
@@ -199,26 +199,23 @@ def main(pairs, stock, num_steps, number_of_pairs_in_simultaneous_trade):
     log.info(f"")
     log.info(f"pairs for test {total_pairs}: {pairs}")
     log.info(f"num_steps: {num_steps}")
-    log.info(f"number_of_pairs_in_simultaneous_trade: {number_of_pairs_in_simultaneous_trade}")
     log.info(f"")
 
+    def callback(future):
+        log.info(f"finished: {future.pair__}")
+
     with ThreadPoolExecutor(max_workers=None) as executor:
-        pairs_in_trade = {}
         i = 1
         while pairs:
             pair = pairs.pop(0)
-            pairs_in_trade[pair] = executor.submit(
+            future = executor.submit(
                 one_pair,
                 pair=pair,
                 stock=stock,
                 n_steps=num_steps,
                 folder="results"
             )
+            future.pair__ = pair
+            future.add_done_callback(callback)
             log.info(f"launch {i} of {total_pairs}: {pair}")
             i += 1
-            while len(pairs_in_trade) >= number_of_pairs_in_simultaneous_trade:
-                for pair, future in pairs_in_trade.items():
-                    if future.done():
-                        pairs_in_trade.pop(pair)
-                        log.info(f"finished: {pair}")
-                        break
