@@ -71,16 +71,15 @@ def main():
     elif r == "7":
         position = stock.get_position_status(pair=pair, verbose=True)
     elif r == "8":
-        # 10 because of connections limit
-        # pairs = ['ACEUSDT', 'BTCUSDT', 'COREUSDT', 'DASHUSDT', 'EOSUSDT', 'ETHUSDT', 'HMSTRUSDT',
-        #     'MNTUSDT', 'SOLUSDT', 'MONUSDT'] #, 'WIFUSDT', 'RAREUSDT']
-
-        pairs = stock.get_all_pairs()
+        pairs = ['ACEUSDT', 'BTCUSDT', 'COREUSDT', 'DASHUSDT', 'EOSUSDT', 'ETHUSDT', 'HMSTRUSDT',
+            'MNTUSDT', 'SOLUSDT', 'MONUSDT'] #, 'WIFUSDT', 'RAREUSDT']
+        # pairs = stock.get_all_pairs()
 
         pairs_USDT_only = [pair for pair in pairs if pair.endswith("USDT")]
-
+        pairs_USDT_only = pairs_USDT_only[:100]  # first N
+        # TODO: figure out how to increase this
         number_of_pairs_in_simultaneous_trade = 10
-        random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=100,
+        random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=10,
                           number_of_pairs_in_simultaneous_trade=number_of_pairs_in_simultaneous_trade)
 
     elif r == "9":

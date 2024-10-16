@@ -1,6 +1,5 @@
 import logging
 import functools
-import queue
 import threading
 from typing import List
 
@@ -10,27 +9,7 @@ from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTick
                                              IPosition, IInstrumentInfo)
 from lib.rwlock import RWLock
 
-
-class StockNotification:
-    NOTIFICATIONS = {
-        "BLUE",
-        "GREEN"
-    }
-
-    def __init__(self, kind: str, data: dict = None):
-        self.kind = kind
-        if kind not in self.NOTIFICATIONS:
-            raise ValueError(
-                f"notification '{kind}' is not exist in available_notifications: {self.NOTIFICATIONS}")
-        self.data = data
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, value):
-        self._data = value
+from lib.rate_limit import rate_limit_sleep_retry
 
 
 def atomic_in_threads(rwlock: RWLock, side):
@@ -71,16 +50,16 @@ class IStock:
     GET_FACT_EARN_NET_rwlock = RWLock()
 
     def __init__(self, map: IMap):
-        self.log_stock = None  # logging.getLogger(__name__)
-        # for example to notify that the order has been fulfilled
-        self.notifications_queue = queue.Queue()
+        self.log_stock = None  # logging.getLogger() # take a root logger!
         self.map = map
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=None)
         self._instrument_infos = {}
 
     def stream_decorator(func):
         """
-        Makes the function non-blocking
+        Decorator
+
+        Run `func` in a new thread
         """
 
         def wrapper(self, handler, handler_kwargs, stop_event, **kwargs):
@@ -98,6 +77,7 @@ class IStock:
 
     stream_decorator = staticmethod(stream_decorator)
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_min_order_qty_price(self, pair, verbose=False):
         """
         By market
@@ -110,6 +90,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_USDT_deposit(self):
         """
         Return USDT wallet deposit
@@ -118,6 +99,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_funding_rate(self, pair, verbose=False):
         """
         Returns the funding rate at the current time
@@ -127,6 +109,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_instrument_info(self, pair, verbose=False) -> IInstrumentInfo:
         """
         Instrument information
@@ -139,6 +122,7 @@ class IStock:
         raise NotImplemented()
 
     @atomic_in_threads(GET_FACT_EARN_NET_rwlock, "OBEY")
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
         """
         By market
@@ -166,6 +150,7 @@ class IStock:
         raise NotImplemented()
 
     @atomic_in_threads(GET_FACT_EARN_NET_rwlock, "ATOMIC")
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def close_SHORT_LONG(self, pair, amount_percent=100) -> float:
         """
         By market
@@ -204,6 +189,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_history_tohlcv(self, pair, interval, start, end=None) -> List[ICandle]:
         """
 
@@ -219,6 +205,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_ticker(self, pair) -> ITicker:
         """
         for tests only. use stream for prod
@@ -228,6 +215,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_all_pairs(self) -> List[str]:
         """
         get all available pairs
@@ -236,6 +224,7 @@ class IStock:
         """
         raise NotImplemented()
 
+    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_position_status(self, pair) -> IPosition:
         """
         for tests and some internal only. use stream for prod

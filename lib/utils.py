@@ -88,8 +88,8 @@ class Singleton(type):
 def setup_logger(name, log_file, level=logging.INFO, stream=False):
     if os.path.exists(log_file):
         os.remove(log_file)
-    formatter_file = logging.Formatter('%(asctime)s: %(message)s')
-    formatter_main = logging.Formatter('%(asctime)s %(name)s: %(message)s')
+    formatter_file = logging.Formatter('%(asctime)s|%(thread)d: %(message)s')
+    formatter_main = logging.Formatter('%(asctime)s|%(thread)d %(name)s: %(message)s')
     handler_f = logging.FileHandler(log_file)
     handler_s = logging.StreamHandler()
     handler_f.setFormatter(formatter_file)
@@ -98,7 +98,7 @@ def setup_logger(name, log_file, level=logging.INFO, stream=False):
         logger = logging.getLogger()
     else:
         logger = logging.getLogger(name)
-
+        logging.getLogger().info(f" {name} --> {threading.get_ident()} thread")
     logger.addHandler(handler_f)
     if stream:
         logger.addHandler(handler_s)
