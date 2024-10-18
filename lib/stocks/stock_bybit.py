@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 
@@ -15,9 +14,7 @@ from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTick
                                              IInstrumentInfo)
 
 # https://bybit-exchange.github.io/docs/v5/rate-limit
-from lib.rate_limit import rate_limit_sleep_retry
-
-# TODO: Rate limit should be applied on the backend functions directly
+from lib.rate_limit import RateLimitSleepRetry
 
 
 class StockBybit(IStock):
@@ -29,12 +26,12 @@ class StockBybit(IStock):
         self.log_stock = logging.getLogger()
         self.log_stock.info(f"Connecting to public Bybit ...")
         self.demo = demo
-        self.http = HTTP(demo=True)
+        self.http = RateLimitSleepRetry(HTTP(demo=True), calls=5, per_second=1)
         self.http_private = None
-        self.ws = WebSocket(
+        self.ws = RateLimitSleepRetry(WebSocket(
             testnet=True,  # testnet gives wrong values! at least on HTTP
             channel_type="linear"
-        )
+        ), calls=5, per_second=1)
         if account_name:
             self.log_stock.info(f"Connecting to private Bybit: {account_name} ...")
 
@@ -48,19 +45,19 @@ class StockBybit(IStock):
 
             # You can create an authenticated or unauthenticated HTTP session.
             # You can skip authentication by not passing any value for the key and secret.
-            self.http_private = HTTP(
+            self.http_private = RateLimitSleepRetry(HTTP(
                 api_key=api_secrets["accounts"][account_name]["API_KEY"],
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
                 demo=demo,
-            )
+            ), calls=5, per_second=1)
 
-            self.ws_private = WebSocket(
+            self.ws_private = RateLimitSleepRetry(WebSocket(
                 demo=demo,
                 testnet=False,
                 channel_type="private",
                 api_key=api_secrets["accounts"][account_name]["API_KEY"],
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
-            )
+            ), calls=5, per_second=1)
 
     def _amount_money_to_qty(self, amount_money, pair):
         """
@@ -75,7 +72,6 @@ class StockBybit(IStock):
         qty = round(qty, precision_qty)
         return qty
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_min_order_qty_price(self, pair, verbose=False):
         log = logging.getLogger(pair)
         if verbose:
@@ -96,19 +92,16 @@ class StockBybit(IStock):
 
         return r
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_USDT_deposit(self):
         wb = self.http_private.get_wallet_balance(accountType="UNIFIED")
         for coin in wb["result"]["list"][0]["coin"]:
             if coin["coin"] == "USDT":
                 return float(coin["walletBalance"])
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_funding_rate(self, pair, verbose=False):
         ticker_obj = self.get_ticker(pair=pair)
         return ticker_obj.FundingRate
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_instrument_info(self, pair, verbose=False):
         log = logging.getLogger(pair)
         if verbose:
@@ -162,7 +155,6 @@ class StockBybit(IStock):
         return self._instrument_infos[pair]
 
     @atomic_in_threads(IStock.GET_FACT_EARN_NET_rwlock, "OBEY")
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
         log = logging.getLogger(pair)
         if amount_money_add and amount_money_add <= 0:
@@ -226,7 +218,6 @@ class StockBybit(IStock):
         return orderId
 
     @atomic_in_threads(IStock.GET_FACT_EARN_NET_rwlock, "ATOMIC")
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def close_SHORT_LONG(self, pair, amount_percent=100):
         """
         Close by market price
@@ -509,7 +500,6 @@ class StockBybit(IStock):
                 "ROI_percent": ROI_or_unrealized_pl_percent,
                 "Closed_PL_Money": closed_pl_usdt}
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_history_tohlcv(self, pair, interval, start, end=None):
         kargs = {
             "category": "linear",
@@ -532,7 +522,6 @@ class StockBybit(IStock):
 
             yield response
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_ticker(self, pair):
         message = self.http_private.get_tickers(category="linear",
                                                 symbol=pair)
@@ -547,7 +536,6 @@ class StockBybit(IStock):
                 setattr(response, k, float(message[v.api_name]))
         return response
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_all_pairs(self):
         message = self.http_private.get_tickers(category="linear")
         pairs = []
@@ -556,7 +544,6 @@ class StockBybit(IStock):
 
         return pairs
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_position_status(self, pair, verbose=False):
         log = logging.getLogger(pair)
         pos_info = self.http_private.get_positions(

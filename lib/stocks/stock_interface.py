@@ -9,8 +9,6 @@ from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTick
                                              IPosition, IInstrumentInfo)
 from lib.rwlock import RWLock
 
-from lib.rate_limit import rate_limit_sleep_retry
-
 
 def atomic_in_threads(rwlock: RWLock, side):
     """
@@ -77,7 +75,6 @@ class IStock:
 
     stream_decorator = staticmethod(stream_decorator)
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_min_order_qty_price(self, pair, verbose=False):
         """
         By market
@@ -90,7 +87,6 @@ class IStock:
         """
         raise NotImplemented()
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_USDT_deposit(self):
         """
         Return USDT wallet deposit
@@ -99,7 +95,6 @@ class IStock:
         """
         raise NotImplemented()
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_funding_rate(self, pair, verbose=False):
         """
         Returns the funding rate at the current time
@@ -109,7 +104,6 @@ class IStock:
         """
         raise NotImplemented()
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_instrument_info(self, pair, verbose=False) -> IInstrumentInfo:
         """
         Instrument information
@@ -122,7 +116,6 @@ class IStock:
         raise NotImplemented()
 
     @atomic_in_threads(GET_FACT_EARN_NET_rwlock, "OBEY")
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
         """
         By market
@@ -150,7 +143,6 @@ class IStock:
         raise NotImplemented()
 
     @atomic_in_threads(GET_FACT_EARN_NET_rwlock, "ATOMIC")
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def close_SHORT_LONG(self, pair, amount_percent=100) -> float:
         """
         By market
@@ -189,7 +181,6 @@ class IStock:
         """
         raise NotImplemented()
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_history_tohlcv(self, pair, interval, start, end=None) -> List[ICandle]:
         """
 
@@ -205,7 +196,6 @@ class IStock:
         """
         raise NotImplemented()
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_ticker(self, pair) -> ITicker:
         """
         for tests only. use stream for prod
@@ -215,7 +205,6 @@ class IStock:
         """
         raise NotImplemented()
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_all_pairs(self) -> List[str]:
         """
         get all available pairs
@@ -224,7 +213,6 @@ class IStock:
         """
         raise NotImplemented()
 
-    @rate_limit_sleep_retry(calls=5, per_second=1)
     def get_position_status(self, pair) -> IPosition:
         """
         for tests and some internal only. use stream for prod
