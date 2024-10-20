@@ -13,11 +13,14 @@ from lib import utils
 from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTicker, IOrderBook, IPosition,
                                              IInstrumentInfo)
 
-# https://bybit-exchange.github.io/docs/v5/rate-limit
-from lib.rate_limit import RateLimitSleepRetry
+from lib.stocks.db_map.map_bybit import PositionBybit
 
 
 class StockBybit(IStock):
+    """
+        Note: Rate limit is implemented inside `pybit`
+            https://bybit-exchange.github.io/docs/v5/rate-limit
+    """
 
     CROSS_MARGIN = True
 
@@ -26,12 +29,13 @@ class StockBybit(IStock):
         self.log_stock = logging.getLogger()
         self.log_stock.info(f"Connecting to public Bybit ...")
         self.demo = demo
-        self.http = RateLimitSleepRetry(HTTP(demo=True), calls=5, per_second=1)
+        self.http = HTTP(demo=True)
         self.http_private = None
-        self.ws = RateLimitSleepRetry(WebSocket(
+        self.ws = WebSocket(
             testnet=True,  # testnet gives wrong values! at least on HTTP
             channel_type="linear"
-        ), calls=5, per_second=1)
+        )
+
         if account_name:
             self.log_stock.info(f"Connecting to private Bybit: {account_name} ...")
 
@@ -45,19 +49,20 @@ class StockBybit(IStock):
 
             # You can create an authenticated or unauthenticated HTTP session.
             # You can skip authentication by not passing any value for the key and secret.
-            self.http_private = RateLimitSleepRetry(HTTP(
+            self.http_private = HTTP(
                 api_key=api_secrets["accounts"][account_name]["API_KEY"],
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
                 demo=demo,
-            ), calls=5, per_second=1)
+                recv_window=20000
+            )
 
-            self.ws_private = RateLimitSleepRetry(WebSocket(
+            self.ws_private = WebSocket(
                 demo=demo,
                 testnet=False,
                 channel_type="private",
                 api_key=api_secrets["accounts"][account_name]["API_KEY"],
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
-            ), calls=5, per_second=1)
+            )
 
     def _amount_money_to_qty(self, amount_money, pair):
         """
@@ -560,16 +565,19 @@ class StockBybit(IStock):
             log.info(f"initial margin (from stock): {data['positionIM']}")
             log.info(f"Bankruptcy price (from stock): {data['bustPrice']}")
             # log.info(json.dumps(data, indent=4))
+
+        map_position = PositionBybit(request_type="http")
         response = IPosition()
-        response.CreatedTime = utils.ts_to_datetime(data[self.map.position.CreatedTime.api_name])
-        response.UpdatedTime = utils.ts_to_datetime(data[self.map.position.UpdatedTime.api_name])
-        response.Side = "SHORT" if data[self.map.position.Side.api_name] == "Sell" else "LONG"
-        response.Size = float(data[self.map.position.Size.api_name])
-        response.AvgPrice = float(data[self.map.position.AvgPrice.api_name]) # self.formula_AEP(entry_qty_price_list=)
-        response.Leverage = float(data[self.map.position.Leverage.api_name])
-        response.MarkPrice_ = float(data[self.map.position.MarkPrice_.api_name])
-        response.StopLoss = None if data[self.map.position.StopLoss.api_name] == "" else float(data[self.map.position.StopLoss.api_name])
-        response.TakeProfit = None if data[self.map.position.TakeProfit.api_name] == "" else float(data[self.map.position.TakeProfit.api_name])
+        response.Pair = pair
+        response.CreatedTime = utils.ts_to_datetime(data[map_position.CreatedTime.api_name])
+        response.UpdatedTime = utils.ts_to_datetime(data[map_position.UpdatedTime.api_name])
+        response.Side = "SHORT" if data[map_position.Side.api_name] == "Sell" else "LONG"
+        response.Size = float(data[map_position.Size.api_name])
+        response.AvgPrice = float(data[map_position.AvgPrice.api_name]) # self.formula_AEP(entry_qty_price_list=)
+        response.Leverage = float(data[map_position.Leverage.api_name])
+        response.MarkPrice_ = float(data[map_position.MarkPrice_.api_name])
+        response.StopLoss = None if data[map_position.StopLoss.api_name] == "" else float(data[map_position.StopLoss.api_name])
+        response.TakeProfit = None if data[map_position.TakeProfit.api_name] == "" else float(data[map_position.TakeProfit.api_name])
 
         instrument_info_obj = self.get_instrument_info(pair=pair)
 
@@ -718,6 +726,62 @@ class StockBybit(IStock):
                 self.log_stock.exception(ex)
 
         self.ws.orderbook_stream(depth=50, symbol=pair, callback=handle_ticker)
+
+        while not stop_event.is_set():
+            pass
+
+    @IStock.stream_decorator
+    def stream_position_status(self, handler, handler_kwargs, stop_event):
+        def handle_position(message):
+            # reformat
+            try:
+                responses = []
+                for data in message["data"]:
+                    map_position = PositionBybit(request_type="websocket")
+                    response = IPosition()
+                    response.Pair = data[map_position.Pair.api_name]
+                    response.CreatedTime = utils.ts_to_datetime(data[map_position.CreatedTime.api_name])
+                    response.UpdatedTime = utils.ts_to_datetime(data[map_position.UpdatedTime.api_name])
+                    response.Side = "SHORT" if data[map_position.Side.api_name] == "Sell" else "LONG"
+                    response.Size = float(data[map_position.Size.api_name])
+                    response.AvgPrice = float(
+                        data[map_position.AvgPrice.api_name])  # self.formula_AEP(entry_qty_price_list=)
+                    response.Leverage = float(data[map_position.Leverage.api_name])
+                    response.MarkPrice_ = float(data[map_position.MarkPrice_.api_name])
+                    response.StopLoss = None if data[map_position.StopLoss.api_name] == "" else float(
+                        data[map_position.StopLoss.api_name])
+                    response.TakeProfit = None if data[map_position.TakeProfit.api_name] == "" else float(
+                        data[map_position.TakeProfit.api_name])
+
+                    instrument_info_obj = self.get_instrument_info(pair=response.Pair)
+
+                    if data["size"] != "0":
+
+                        pl_dict = self.formula_profit_loss(pair=response.Pair,
+                                                           side=response.Side,
+                                                           average_entry_price_usdt=response.AvgPrice,
+                                                           last_traded_price=response.MarkPrice_,
+                                                           qty=response.Size,
+                                                           margin_leverage_pair=response.Leverage,
+                                                           margin_leverage_pair_max=instrument_info_obj.MaxLeverage,
+                                                           funding_rate=self.get_funding_rate(pair=response.Pair),
+                                                           verbose=False)
+
+                        response.Unrealized_PL_Money = pl_dict["Unrealized_PL_Money"]
+                        response.ROI_percent = pl_dict["ROI_percent"]
+                        response.Closed_PL_Money = pl_dict["Closed_PL_Money"]
+                    else:
+                        response.Unrealized_PL_Money = None
+                        response.ROI_percent = None
+                        response.Closed_PL_Money = None
+
+                    responses.append(response)
+
+                handler(responses, **handler_kwargs)
+            except Exception as ex:
+                self.log_stock.exception(ex)
+
+        self.ws_private.position_stream(handle_position)
 
         while not stop_event.is_set():
             pass

@@ -26,8 +26,6 @@ class MapBybit(IMap):
         ...
 ```
 """
-import uuid
-
 
 _NDARRAY_DB_TYPE = "NDARRAY"
 
@@ -167,6 +165,8 @@ class IOrderBook(_base):
 
 class IPosition(_base):
     """
+    If 'Size' == 0 -> Position is closed
+
     Fields after set:
         'CreatedTime': datetime.datetime(2024, 10, 2, 23, 20, 39, 873000),
         'UpdatedTime': datetime.datetime(2024, 10, 2, 23, 20, 39, 873000),
@@ -178,6 +178,7 @@ class IPosition(_base):
         'TakeProfit': float | None,
     """
     def __init__(self):
+        self.Pair = _Field("Pair", "TEXT", NotImplemented)
         self.CreatedTime = _Field("CreatedTime", "TIMESTAMP", NotImplemented)
         self.UpdatedTime = _Field("UpdatedTime", "TIMESTAMP", NotImplemented)
         self.Side = _Field("Side", "TEXT", NotImplemented)

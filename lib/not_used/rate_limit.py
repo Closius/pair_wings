@@ -1,7 +1,7 @@
 """
 Rate limit public interface.
 
-This module includes the decorator used to rate limit function invocations.
+This module includes the wrapper for rate limit function invocations.
 
 Usage:
 
@@ -23,17 +23,22 @@ import logging
 
 
 class RateLimitSleepRetry:
-    def __init__(self, obj, calls=15, per_second=900):
+    def __init__(self, obj, function_names: list, calls=15, per_second=900):
         """
-            Limit the number of function's calls. + Sleep, wait and Retry
+            Limit the number of calls of function_names. + Sleep, wait and Retry
 
             By default the function can't be called more than
             (15 calls every 15 minutes (900 seconds)).
         """
-        self._rt_log = logging.getLogger(__name__)
+        self._rt_log = logging.getLogger()
         self._rt_clamped_calls = calls
         self._rt_period = per_second
         self._rt_obj = obj
+        if not function_names:
+            raise ValueError("function_names is empty: this will apply the rate limit to "
+                         "ALL of the functions and get/set properties of the 'obj'. "
+                         "Such behavior is not accepted. Please provide function names")
+        self._function_names = function_names
 
         self._rt_last_reset = self._rt_clock()
         self._rt_num_calls = 0
@@ -43,7 +48,7 @@ class RateLimitSleepRetry:
     def __getattribute__(self, item):
         if item.startswith("_"):
             return super().__getattribute__(item)
-        elif item in dir(self._rt_obj):
+        elif item in self._function_names:
             with self._rt_lock:
                 period_remaining = self._rt_period_remaining()
 

@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 
 from lib import data_show, data_collector, utils, random_trade
 
@@ -20,11 +21,9 @@ def main():
     log.info("3 - Show candles")
     log.info("4 - Read order books")
     log.info("5 - Read stream candles")
-    log.info("6 - Trade demo: open SHORT wait close")
-    log.info("7 - Trade demo: get position status")
-    log.info("8 - Trade demo: statistical error")
-    log.info("9 - Get all pairs")
-    log.info("10 - Quit")
+    log.info("6 - Trade demo: stream_position_status, open SHORT wait close")
+    log.info("7 - Trade demo: statistical error")
+    log.info("8 - Quit")
     log.info("")
     log.info(f"pair: {pair}")
     log.info("")
@@ -63,25 +62,31 @@ def main():
     elif r == "5":
         data_show.read_stream_candles(db_filepath, pair=pair, interval="5", map=map)
     elif r == "6":
-        random_trade.open_add_position(stock, pair=pair, side="SHORT", percent_from_deposit=1, qty=0.01,
-                    wait_for_add_second=None, add_qty=0.01)
 
-        # time.sleep(20)
-        # r = random_trade.close_position(stock, pair=pair, amount_percent=100, verbose=True)
+        def handler(message):
+            for m in message:
+                log.info(f'position_status {utils.datetime_to_ts(m.UpdatedTime)} | '
+                              f'{m.Pair} | {m.Size}' )
+
+        stock.stream_position_status(handler=handler, handler_kwargs={}, stop_event=event)
+        time.sleep(2)
+        random_trade.open_add_position(stock, pair=pair, side="SHORT", percent_from_deposit=1, qty=0.01,
+                    wait_for_add_second=3, add_qty=0.01)
+        time.sleep(5)
+        r = random_trade.close_position(stock, pair=pair, amount_percent=100, verbose=True)
+        event.set()
+
     elif r == "7":
-        position = stock.get_position_status(pair=pair, verbose=True)
-    elif r == "8":
         pairs = ['ACEUSDT', 'BTCUSDT', 'COREUSDT', 'DASHUSDT', 'EOSUSDT', 'ETHUSDT', 'HMSTRUSDT',
             'MNTUSDT', 'SOLUSDT', 'MONUSDT'] #, 'WIFUSDT', 'RAREUSDT']
-        # pairs = stock.get_all_pairs()
+        pairs = stock.get_all_pairs()
+
+        # pairs = ['BTCUSDT']
 
         pairs_USDT_only = [pair for pair in pairs if pair.endswith("USDT")]
-        pairs_USDT_only = pairs_USDT_only[:100]  # first N
+        pairs_USDT_only = pairs_USDT_only[:10]  # first N
         random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=10)
 
-    elif r == "9":
-        pairs = stock.get_all_pairs()
-        log.info(pairs)
 
 if __name__ == "__main__":
     main()

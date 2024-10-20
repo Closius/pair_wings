@@ -202,7 +202,7 @@ def main(pairs, stock, num_steps):
     log.info(f"")
 
     def callback(future):
-        log.info(f"finished: {future.pair__}")
+        log.info(f"finished {future.i__} of {future.total_pairs__}: {future.pair__}")
 
     with ThreadPoolExecutor(max_workers=None) as executor:
         i = 1
@@ -216,6 +216,8 @@ def main(pairs, stock, num_steps):
                 folder="results"
             )
             future.pair__ = pair
+            future.i__ = i
+            future.total_pairs__ = total_pairs
             future.add_done_callback(callback)
             log.info(f"launch {i} of {total_pairs}: {pair}")
             i += 1

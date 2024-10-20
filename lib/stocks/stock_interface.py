@@ -254,13 +254,13 @@ class IStock:
         raise NotImplemented()
 
     @stream_decorator
-    def stream_position_status(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event):
+    def stream_position_status(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event) -> None:
         """
 
         Position
         Subscribe to the position stream to see changes to your position data in real-time.
 
         :param stop_event: to stop streaming
-        :return to `handler` IPosition
+        :return to `handler` IPosition. Handler handles list of IPosition
         """
         raise NotImplemented()

@@ -34,7 +34,6 @@ class DataCollector:
         self.stock.stream_ticker(handler=handler, handler_kwargs={}, stop_event=stop_event,
                                  pair=pair)
 
-
     def collect_history_candles(self, pair, interval, start, end=None, recreate=False):
         """
 
@@ -72,7 +71,6 @@ class DataCollector:
 
         self.stock.stream_tohlcv(handler=handler, handler_kwargs={}, stop_event=stop_event,
                                  pair=pair, interval=interval)
-
 
     def collect_stream_order_book(self, pair, stop_event, recreate=False):
         self.log.info(f"collect_stream_order_book {pair}")
