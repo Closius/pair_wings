@@ -566,7 +566,7 @@ class StockBybit(IStock):
             log.info(f"Bankruptcy price (from stock): {data['bustPrice']}")
             # log.info(json.dumps(data, indent=4))
 
-        map_position = PositionBybit(request_type="http")
+        map_position = PositionBybit(api_response_type="http")
         response = IPosition()
         response.Pair = pair
         response.CreatedTime = utils.ts_to_datetime(data[map_position.CreatedTime.api_name])
@@ -737,7 +737,7 @@ class StockBybit(IStock):
             try:
                 responses = []
                 for data in message["data"]:
-                    map_position = PositionBybit(request_type="websocket")
+                    map_position = PositionBybit(api_response_type="websocket")
                     response = IPosition()
                     response.Pair = data[map_position.Pair.api_name]
                     response.CreatedTime = utils.ts_to_datetime(data[map_position.CreatedTime.api_name])

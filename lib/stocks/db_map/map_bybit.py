@@ -47,10 +47,10 @@ class OrderBookBybit(IOrderBook):
 
 
 class PositionBybit(IPosition):
-    def __init__(self, request_type="http"):
+    def __init__(self, api_response_type="http"):
         """
 
-        :param request_type: "websocket", "http"
+        :param api_response_type: "websocket", "http"
         """
         super().__init__()
         self.Pair.api_name = "symbol"
@@ -58,9 +58,9 @@ class PositionBybit(IPosition):
         self.UpdatedTime.api_name = "updatedTime"
         self.Side.api_name = "side"
         self.Size.api_name = "size"
-        if request_type == "http":
+        if api_response_type == "http":
             self.AvgPrice.api_name = "avgPrice"
-        elif request_type == "websocket":
+        elif api_response_type == "websocket":
             self.AvgPrice.api_name = "entryPrice"
         self.Leverage.api_name = "leverage"
         self.MarkPrice_.api_name = "markPrice"
