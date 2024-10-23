@@ -23,7 +23,8 @@ def main():
     log.info("5 - Read stream candles")
     log.info("6 - Trade demo: stream_position_status, open SHORT wait close")
     log.info("7 - Trade demo: statistical error")
-    log.info("8 - Quit")
+    log.info("8 - Test dataframe")
+    log.info("9 - Quit")
     log.info("")
     log.info(f"pair: {pair}")
     log.info("")
@@ -86,7 +87,30 @@ def main():
         pairs_USDT_only = [pair for pair in pairs if pair.endswith("USDT")]
         pairs_USDT_only = pairs_USDT_only[:10]  # first N
         random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=10)
+    elif r == "8":
+        from lib.state_collection import State
+        tk1 = stock.get_ticker(pair)
+        tk1.FundingRate = None
+        time.sleep(2)
+        tk2 = stock.get_ticker(pair)
 
+        st = State(ticker=tk1)
+        # st = State()
+        st.append_single_snapshot(ticker=tk2)
+        st.append_single_snapshot(ticker=tk2)
+
+        log.info("ticker:")
+        st._dataframes['ticker'].info()
+        log.info("position:")
+        st._dataframes['position'].info()
+        log.info("order_book:")
+        st._dataframes['order_book'].info()
+
+        for k in st._dataframes.keys():
+            st._dataframes[k] = st._dataframes[k].drop(index=[0])
+
+        log.info("order_book:")
+        st._dataframes['order_book'].info()
 
 if __name__ == "__main__":
     main()

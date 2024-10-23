@@ -19,6 +19,8 @@
 # State.candle_ticker = ICandleTicker()
 # State.order_book = IOrderBook()
 #
+# State can be also a slice. State type: scalar, slice
+#
 # StateCollection object can contain the information about
 # multiple stocks, for example in a dicrionary
 # {"stock_A": {State}, "stock_B": {State}, ...}
@@ -33,3 +35,31 @@
 #
 # StateCollection.return_as_dataframe(start: datetime, end: datetime | None)
 #
+
+import pandas as pd
+
+from lib.stocks.db_map.map_interface import IMap
+
+
+class State(IMap):
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self._dataframes = {k: v.to_dataframe() for k, v in IMap().__dict__.items()}
+        self.append_single_snapshot(**kwargs)
+        # The first snapshot is always full of Nones
+        for k in self._dataframes.keys():
+            self._dataframes[k] = self._dataframes[k].drop(index=[0])
+
+    def append_single_snapshot(self, **kwargs):
+        for field_name in IMap().__dict__.keys():
+            field_obj = IMap().__dict__[field_name] if field_name not in kwargs else kwargs[field_name]
+            if field_name not in self.__dict__.keys():
+                raise ValueError(f"field `{field_name}` is not exist in IMap")
+            if not isinstance(field_obj, type(IMap().__dict__[field_name])):
+                raise ValueError(f"field `{field_name}` type mismatch: sent `{type(field_obj)}` "
+                                 f"required: `{type(self.__dict__[field_name])}`")
+
+            self._dataframes[field_name] = pd.concat([self._dataframes[field_name], field_obj.to_dataframe()],
+                                                     ignore_index=True)
+

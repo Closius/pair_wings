@@ -26,14 +26,21 @@ class MapBybit(IMap):
         ...
 ```
 """
+import logging
+
+import pandas as pd
+import numpy as np
 
 _NDARRAY_DB_TYPE = "NDARRAY"
 
+
 class _Field:
-    def __init__(self, db_name, db_type, api_name=None):
+    def __init__(self, db_name, db_type, df_type, api_name=None):
         self.db_name = db_name  # name of the column in database
         self.db_type = db_type  # type (and key words nearby for table creating) in database
+        self.df_type = df_type  # DataFrame column type
         self.api_name = api_name  # name in stock API
+
 
 class _base:
 
@@ -53,6 +60,14 @@ class _base:
         return [c.db_type for c in self.init_fields.values()]
     def get_api_names(self):
         return [c.api_name for c in self.init_fields.values()]
+    def to_dataframe(self):
+        data = {}
+        data_type = {}
+        for f_name in self.init_fields.keys():
+            data[f_name] = self.__dict__[f_name] if not isinstance(self.__dict__[f_name], _Field) else None
+            data_type[f_name] = self.init_fields[f_name].df_type
+        df = pd.DataFrame([data]).astype(data_type)
+        return df
 
 
 class IInstrumentInfo(_base):
@@ -61,17 +76,17 @@ class IInstrumentInfo(_base):
     Maker - open/close by limit (add liquidity)
     """
     def __init__(self):
-        self.MaxLeverage = _Field("MaxLeverage", "REAL", NotImplemented)
-        # for example USDT
-        self.PriceScale = _Field("PriceScale", "REAL", NotImplemented)
-        # for example BTC
-        self.QtyScale = _Field("QtyScale", "REAL", NotImplemented)
-        self.TakerFeeRate = _Field("TakerFeeRate", "REAL", NotImplemented)
-        self.MakerFeeRate = _Field("MakerFeeRate", "REAL", NotImplemented)
-        self.MinOrderQty = _Field("MinOrderQty", "REAL", NotImplemented)
-        self.OrderQtyStep = _Field("OrderQtyStep", "REAL", NotImplemented)
+        self.MaxLeverage = _Field("MaxLeverage", "REAL", "int16", NotImplemented)
+        # float value accuracy, for USDT
+        self.PriceScale = _Field("PriceScale", "REAL", "int16", NotImplemented)
+        # float value accuracy, for BTC
+        self.QtyScale = _Field("QtyScale", "REAL", "int16", NotImplemented)
+        self.TakerFeeRate = _Field("TakerFeeRate", "REAL", "float64", NotImplemented)
+        self.MakerFeeRate = _Field("MakerFeeRate", "REAL", "float64", NotImplemented)
+        self.MinOrderQty = _Field("MinOrderQty", "REAL", "float64", NotImplemented)
+        self.OrderQtyStep = _Field("OrderQtyStep", "REAL", "float64", NotImplemented)
         # a min price of the amount that can be placed in a single order
-        self.MinOrderValue = _Field("MinOrderValue", "REAL", NotImplemented)
+        self.MinOrderValue = _Field("MinOrderValue", "REAL", "float64", NotImplemented)
         super().__init__()
 
 
@@ -87,13 +102,13 @@ class ITicker(_base):
             'FundingRate': 0.05
     """
     def __init__(self):
-        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
-        self.MarkPrice = _Field("MarkPrice", "REAL", NotImplemented)
-        self.Ask1Size = _Field("Ask1Size", "REAL", NotImplemented)
-        self.Bid1Size = _Field("Bid1Size", "REAL", NotImplemented)
-        self.OpenInterest = _Field("OpenInterest", "REAL", NotImplemented)
-        self.OpenInterestValue = _Field("OpenInterestValue", "REAL", NotImplemented)
-        self.FundingRate = _Field("FundingRate", "REAL", NotImplemented)
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]", NotImplemented)
+        self.MarkPrice = _Field("MarkPrice", "REAL", "float64", NotImplemented)
+        self.Ask1Size = _Field("Ask1Size", "REAL", "float64", NotImplemented)
+        self.Bid1Size = _Field("Bid1Size", "REAL", "float64", NotImplemented)
+        self.OpenInterest = _Field("OpenInterest", "REAL", "float64", NotImplemented)
+        self.OpenInterestValue = _Field("OpenInterestValue", "REAL", "float64", NotImplemented)
+        self.FundingRate = _Field("FundingRate", "REAL", "float64", NotImplemented)
         super().__init__()
 
 
@@ -111,13 +126,13 @@ class ICandle(_base):
         'Turnover': 35447184.1698
     """
     def __init__(self):
-        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
-        self.Open = _Field("Open", "REAL", NotImplemented)
-        self.High = _Field("High", "REAL", NotImplemented)
-        self.Low = _Field("Low", "REAL", NotImplemented)
-        self.Close = _Field("Close", "REAL", NotImplemented)
-        self.Volume = _Field("Volume", "REAL", NotImplemented)
-        self.Turnover = _Field("Turnover", "REAL", NotImplemented)
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]", NotImplemented)
+        self.Open = _Field("Open", "REAL", "float64", NotImplemented)
+        self.High = _Field("High", "REAL", "float64", NotImplemented)
+        self.Low = _Field("Low", "REAL", "float64", NotImplemented)
+        self.Close = _Field("Close", "REAL", "float64", NotImplemented)
+        self.Volume = _Field("Volume", "REAL", "float64", NotImplemented)
+        self.Turnover = _Field("Turnover", "REAL", "float64", NotImplemented)
         super().__init__()
 
 
@@ -137,15 +152,15 @@ class ICandleTicker(_base):
         'Turnover': 132078946.7517
     """
     def __init__(self):
-        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
-        self.Start = _Field("Start", "TIMESTAMP", NotImplemented)  # when the candle starts
-        self.End = _Field("End", "TIMESTAMP", NotImplemented)
-        self.Open = _Field("Open", "REAL", NotImplemented)
-        self.High = _Field("High", "REAL", NotImplemented)
-        self.Low = _Field("Low", "REAL", NotImplemented)
-        self.Close = _Field("Close", "REAL", NotImplemented)
-        self.Volume = _Field("Volume", "REAL", NotImplemented)
-        self.Turnover = _Field("Turnover", "REAL", NotImplemented)
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]", NotImplemented)
+        self.Start = _Field("Start", "TIMESTAMP", "datetime64[ns]", NotImplemented)  # when the candle starts
+        self.End = _Field("End", "TIMESTAMP", "datetime64[ns]", NotImplemented)
+        self.Open = _Field("Open", "REAL", "float64", NotImplemented)
+        self.High = _Field("High", "REAL", "float64", NotImplemented)
+        self.Low = _Field("Low", "REAL", "float64", NotImplemented)
+        self.Close = _Field("Close", "REAL", "float64", NotImplemented)
+        self.Volume = _Field("Volume", "REAL", "float64", NotImplemented)
+        self.Turnover = _Field("Turnover", "REAL", "float64", NotImplemented)
         super().__init__()
 
 
@@ -157,9 +172,9 @@ class IOrderBook(_base):
         'Bids': np.array(shape=(50, 2)),  # [price, volume], order: price higher -> lower
     """
     def __init__(self):
-        self.Time = _Field("Time", "TIMESTAMP UNIQUE", NotImplemented)
-        self.Bids = _Field("Bids", _NDARRAY_DB_TYPE, NotImplemented)
-        self.Asks = _Field("Asks", _NDARRAY_DB_TYPE, NotImplemented)
+        self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]", NotImplemented)
+        self.Bids = _Field("Bids", _NDARRAY_DB_TYPE, "object", NotImplemented)
+        self.Asks = _Field("Asks", _NDARRAY_DB_TYPE, "object", NotImplemented)
         super().__init__()
 
 
@@ -178,22 +193,22 @@ class IPosition(_base):
         'TakeProfit': float | None,
     """
     def __init__(self):
-        self.Pair = _Field("Pair", "TEXT", NotImplemented)
-        self.CreatedTime = _Field("CreatedTime", "TIMESTAMP", NotImplemented)
-        self.UpdatedTime = _Field("UpdatedTime", "TIMESTAMP", NotImplemented)
-        self.Side = _Field("Side", "TEXT", NotImplemented)
-        self.Size = _Field("Size", "REAL", NotImplemented)
-        self.AvgPrice = _Field("AvgPrice", "REAL", NotImplemented)
-        self.Leverage = _Field("Leverage", "REAL", NotImplemented)
-        self.MarkPrice_ = _Field("MarkPrice_", "TEXT", NotImplemented)
-        self.StopLoss = _Field("StopLoss", "REAL", NotImplemented)
-        self.TakeProfit = _Field("TakeProfit", "REAL", NotImplemented)
+        self.Pair = _Field("Pair", "TEXT", "string", NotImplemented)
+        self.CreatedTime = _Field("CreatedTime", "TIMESTAMP", "datetime64[ns]", NotImplemented)
+        self.UpdatedTime = _Field("UpdatedTime", "TIMESTAMP", "datetime64[ns]", NotImplemented)
+        self.Side = _Field("Side", "TEXT", "string", NotImplemented)
+        self.Size = _Field("Size", "REAL", "float64", NotImplemented)
+        self.AvgPrice = _Field("AvgPrice", "REAL", "float64", NotImplemented)
+        self.Leverage = _Field("Leverage", "REAL", "float64", NotImplemented)
+        self.MarkPrice_ = _Field("MarkPrice_", "REAL", "float64", NotImplemented)
+        self.StopLoss = _Field("StopLoss", "REAL", "float64", NotImplemented)
+        self.TakeProfit = _Field("TakeProfit", "REAL", "float64", NotImplemented)
         # PL without any fees
-        self.Unrealized_PL_Money = _Field("Unrealized_PL_Money", "REAL", NotImplemented)
+        self.Unrealized_PL_Money = _Field("Unrealized_PL_Money", "REAL",  "float64", NotImplemented)
         # ROI
-        self.ROI_percent = _Field("ROI_percent", "REAL", NotImplemented)
+        self.ROI_percent = _Field("ROI_percent", "REAL",  "float64", NotImplemented)
         # How much I earn on my wallet
-        self.Closed_PL_Money = _Field("Closed_PL_Money", "REAL", NotImplemented)
+        self.Closed_PL_Money = _Field("Closed_PL_Money", "REAL",  "float64", NotImplemented)
         super().__init__()
 
 
