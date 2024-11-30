@@ -5,8 +5,7 @@ from typing import List
 
 from concurrent.futures import ThreadPoolExecutor
 
-from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTicker, IOrderBook,
-                                             IPosition, IInstrumentInfo)
+from lib.map_interface import (ITicker, ICandle, IPosition, IInstrumentInfo)
 from lib.rwlock import RWLock
 
 
@@ -47,9 +46,8 @@ class IStock:
 
     GET_FACT_EARN_NET_rwlock = RWLock()
 
-    def __init__(self, map: IMap):
+    def __init__(self):
         self.log_stock = None  # logging.getLogger() # take a root logger!
-        self.map = map
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=None)
         self._instrument_infos = {}
 

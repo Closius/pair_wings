@@ -6,13 +6,12 @@ import seaborn as sns
 
 import pandas as pd
 
-from lib.stocks.db_map.map_interface import IMap
 from lib import database
 from lib import utils
 
-def draw_candles(db_filepath, pair, map: IMap):
+def draw_candles(db_filepath, pair):
     log = logging.getLogger(__name__)
-    db = database.DB(db_filepath, map)
+    db = database.DB(db_filepath)
     data_candle = db.read_candle_table(pair)
 
     # apd = mpf.make_addplot(data_candle['High'], type='scatter')
@@ -24,12 +23,12 @@ def draw_candles(db_filepath, pair, map: IMap):
 
     mpf.show()
 
-def draw_tickers_and_candles(db_filepath, pair, map: IMap):
+def draw_tickers_and_candles(db_filepath, pair):
     """
         Do not use. For reference only
     """
     log = logging.getLogger(__name__)
-    db = database.DB(db_filepath, map)
+    db = database.DB(db_filepath)
     data_ticker = db.read_ticker_table(pair)
     data_candle = db.read_candle_table(pair)
 
@@ -57,9 +56,9 @@ def draw_tickers_and_candles(db_filepath, pair, map: IMap):
 
     mpf.show()
 
-def read_order_book(db_filepath, pair, map: IMap):
+def read_order_book(db_filepath, pair):
     log = logging.getLogger(__name__)
-    db = database.DB(db_filepath, map)
+    db = database.DB(db_filepath)
     data_order_book = db.read_order_book_table(pair)
 
     log.info(f"data_order_book: {data_order_book.info(verbose=True)}")
@@ -99,9 +98,9 @@ def read_order_book(db_filepath, pair, map: IMap):
         plt.pause(0.5)
         ax.clear()
 
-def read_stream_candles(db_filepath, pair, interval, map: IMap):
+def read_stream_candles(db_filepath, pair, interval):
     log = logging.getLogger(__name__)
-    db = database.DB(db_filepath, map)
+    db = database.DB(db_filepath)
     df = db.read_candle_ticker_table(pair, interval)
 
     log.info(df.info(verbose=True))

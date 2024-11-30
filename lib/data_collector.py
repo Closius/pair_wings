@@ -5,25 +5,24 @@ from lib import database
 
 from lib.stocks.stock_interface import IStock
 
-from lib.stocks.db_map.map_interface import IMap, IMap, ITicker, ICandle, ICandleTicker, IOrderBook
+from lib.map_interface import ITicker, ICandleTicker, IOrderBook
 
 
 class DataCollector:
 
-    def __init__(self, stock: IStock, filepath, map: IMap):
+    def __init__(self, stock: IStock, filepath):
         self.log = logging.getLogger(__name__)
         self.db_filepath = filepath
-        self.map = map
         self.stock = stock
         self.log.info(f"DataCollector {self.db_filepath}")
-        self.db = database.DB(self.db_filepath, self.map)
+        self.db = database.DB(self.db_filepath)
 
     def collect_stream_tickers(self, pair, stop_event, recreate=False):
         self.log.info(f"collect_tickers {pair}")
         self.db.create_ticker_table(pair, recreate)
 
         def handler(message: ITicker):
-            _db = database.DB(self.db_filepath, self.map)
+            _db = database.DB(self.db_filepath)
             _db.insert_ticker(
                 pair=pair,
                 obj=message
@@ -60,7 +59,7 @@ class DataCollector:
         self.db.create_candle_ticker_table(pair, interval, recreate)
 
         def handler(message: ICandleTicker):
-            _db = database.DB(self.db_filepath, self.map)
+            _db = database.DB(self.db_filepath)
             _db.insert_candle_ticker(
                 pair=pair,
                 interval=interval,
@@ -77,7 +76,7 @@ class DataCollector:
         self.db.create_order_book_table(pair, recreate)
 
         def handler(message: IOrderBook):
-            _db = database.DB(self.db_filepath, self.map)
+            _db = database.DB(self.db_filepath)
             _db.insert_order_book(
                 pair=pair,
                 obj=message

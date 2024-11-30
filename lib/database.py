@@ -5,8 +5,8 @@ import io
 
 import pandas as pd
 
-from lib.stocks.db_map.map_interface import (
-    IMap, IMap, ITicker, ICandle, ICandleTicker, IOrderBook, _NDARRAY_DB_TYPE)
+from lib.map_interface import (
+    IMap, ITicker, ICandle, ICandleTicker, IOrderBook, _NDARRAY_DB_TYPE)
 from lib import utils
 
 
@@ -27,7 +27,7 @@ def sqlite_to_numpy(text):
 
 
 class DB(metaclass=utils.Singleton):
-    def __init__(self, filepath, map: IMap):
+    def __init__(self, filepath):
         # Converts np.array to TEXT when inserting
         sqlite3.register_adapter(np.ndarray, numpy_to_sqlite)
         # Converts TEXT to np.array when selecting
@@ -36,7 +36,7 @@ class DB(metaclass=utils.Singleton):
         self.log = logging.getLogger(__name__)
         self.log.info("Database init")
         self.filepath = filepath
-        self.map = map
+        self.map = IMap()
         self.con = sqlite3.connect(self.filepath, detect_types=sqlite3.PARSE_DECLTYPES)
         self.cur = self.con.cursor()
 

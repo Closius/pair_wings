@@ -1,5 +1,6 @@
 import logging
 import time
+import datetime
 
 import json5
 import numpy as np
@@ -10,10 +11,8 @@ from pybit.unified_trading import HTTP
 from lib.stocks.stock_interface import IStock, atomic_in_threads
 from lib import utils
 
-from lib.stocks.db_map.map_interface import (IMap, ITicker, ICandle, ICandleTicker, IOrderBook, IPosition,
-                                             IInstrumentInfo)
-
-from lib.stocks.db_map.map_bybit import PositionBybit
+from lib.map_interface import (ITicker, ICandle, ICandleTicker, IOrderBook, IPosition,
+                               IInstrumentInfo)
 
 
 class StockBybit(IStock):
@@ -24,8 +23,8 @@ class StockBybit(IStock):
 
     CROSS_MARGIN = True
 
-    def __init__(self, map: IMap, account_name=None, api_secrets_file=None, settings_file=None, demo=True):
-        super().__init__(map=map)
+    def __init__(self, account_name=None, api_secrets_file=None, settings_file=None, demo=True):
+        super().__init__()
         self.log_stock = logging.getLogger()
         self.log_stock.info(f"Connecting to public Bybit ...")
         self.demo = demo
@@ -118,6 +117,7 @@ class StockBybit(IStock):
             )
 
             r = IInstrumentInfo()
+            r.Time = utils.ts_to_datetime(instr_info["time"])
             r.MaxLeverage = float(instr_info["result"]["list"][0]["leverageFilter"]["maxLeverage"])
             r.PriceScale = int(instr_info["result"]["list"][0]["priceScale"])
             min_qty_raw_str = instr_info["result"]["list"][0]["lotSizeFilter"]["minOrderQty"]
@@ -519,11 +519,15 @@ class StockBybit(IStock):
         # It is not efficient but allow to use an universal DataCollector
         for candle in self.http.get_kline(**kargs)["result"]["list"]:
             response = ICandle()
-            for (k,v), data in zip(self.map.candle.init_fields.items(), candle):
-                if v.db_name == self.map.candle.Time.db_name:
-                    setattr(response, k, utils.ts_to_datetime(data))
-                else:
-                    setattr(response, k, data)
+
+            response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            response.Time = utils.ts_to_datetime(candle[0])
+            response.Open = candle[1]
+            response.High = candle[2]
+            response.Low = candle[3]
+            response.Close = candle[4]
+            response.Volume = candle[5]
+            response.Turnover = candle[6]
 
             yield response
 
@@ -532,13 +536,15 @@ class StockBybit(IStock):
                                                 symbol=pair)
 
         response = ITicker()
+        response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         response.Time = utils.ts_to_datetime(message["time"])
         message = message["result"]["list"][0]
-        for k, v in self.map.ticker.init_fields.items():
-            if v.db_name == self.map.ticker.Time.db_name:
-                continue
-            else:
-                setattr(response, k, float(message[v.api_name]))
+        response.MarkPrice = float(message["markPrice"])
+        response.Ask1Size = float(message["ask1Size"])
+        response.Bid1Size = float(message["bid1Size"])
+        response.OpenInterest = float(message["openInterest"])
+        response.OpenInterestValue = float(message["openInterestValue"])
+        response.FundingRate = float(message["fundingRate"])
         return response
 
     def get_all_pairs(self):
@@ -566,18 +572,19 @@ class StockBybit(IStock):
             log.info(f"Bankruptcy price (from stock): {data['bustPrice']}")
             # log.info(json.dumps(data, indent=4))
 
-        map_position = PositionBybit(api_response_type="http")
         response = IPosition()
+        response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        response.Time = utils.ts_to_datetime(data["updatedTime"])
         response.Pair = pair
-        response.CreatedTime = utils.ts_to_datetime(data[map_position.CreatedTime.api_name])
-        response.UpdatedTime = utils.ts_to_datetime(data[map_position.UpdatedTime.api_name])
-        response.Side = "SHORT" if data[map_position.Side.api_name] == "Sell" else "LONG"
-        response.Size = float(data[map_position.Size.api_name])
-        response.AvgPrice = float(data[map_position.AvgPrice.api_name]) # self.formula_AEP(entry_qty_price_list=)
-        response.Leverage = float(data[map_position.Leverage.api_name])
-        response.MarkPrice_ = float(data[map_position.MarkPrice_.api_name])
-        response.StopLoss = None if data[map_position.StopLoss.api_name] == "" else float(data[map_position.StopLoss.api_name])
-        response.TakeProfit = None if data[map_position.TakeProfit.api_name] == "" else float(data[map_position.TakeProfit.api_name])
+        response.CreatedTime = utils.ts_to_datetime(data["createdTime"])
+        response.UpdatedTime = utils.ts_to_datetime(data["updatedTime"])
+        response.Side = "SHORT" if data["side"] == "Sell" else "LONG"
+        response.Size = float(data["size"])
+        response.AvgPrice = float(data["avgPrice"]) # self.formula_AEP(entry_qty_price_list=)
+        response.Leverage = float(data["leverage"])
+        response.MarkPrice_ = float(data["markPrice"])
+        response.StopLoss = None if data["stopLoss"] == "" else float(data["stopLoss"])
+        response.TakeProfit = None if data["takeProfit"] == "" else float(data["takeProfit"])
 
         instrument_info_obj = self.get_instrument_info(pair=pair)
 
@@ -621,13 +628,17 @@ class StockBybit(IStock):
             try:
                 data = message["data"][0]
                 response = ICandleTicker()
-                for k, v in self.map.candle_ticker.init_fields.items():
-                    if v.db_name in [self.map.candle_ticker.Time.db_name,
-                                     self.map.candle_ticker.Start.db_name,
-                                     self.map.candle_ticker.End.db_name]:
-                        setattr(response, k, utils.ts_to_datetime(data[v.api_name]))
-                    else:
-                        setattr(response, k, data[v.api_name])
+
+                response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                response.Time = utils.ts_to_datetime(data["timestamp"])
+                response.Start = utils.ts_to_datetime(data["start"])
+                response.End = utils.ts_to_datetime(data["end"])
+                response.Open = data["open"]
+                response.High = data["high"]
+                response.Low = data["low"]
+                response.Close = data["close"]
+                response.Volume = data["volume"]
+                response.Turnover = data["turnover"]
 
                 handler(response, **handler_kwargs)
             except Exception as ex:
@@ -646,13 +657,18 @@ class StockBybit(IStock):
         def handle_ticker(message):
             # reformat
             try:
-                message["data"].update({"ts": message["ts"]})
+                data = message["data"]
+                data["ts"] = message["ts"]
                 response = ITicker()
-                for k, v in self.map.ticker.init_fields.items():
-                    if v.db_name == self.map.ticker.Time.db_name:
-                        setattr(response, k, utils.ts_to_datetime(message["data"][v.api_name]))
-                    else:
-                        setattr(response, k, message["data"][v.api_name])
+
+                response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                response.Time = utils.ts_to_datetime(data["ts"])
+                response.MarkPrice = data["markPrice"]
+                response.Ask1Size = data["ask1Size"]
+                response.Bid1Size = data["bid1Size"]
+                response.OpenInterest = data["openInterest"]
+                response.OpenInterestValue = data["openInterestValue"]
+                response.FundingRate = data["fundingRate"]
 
                 handler(response, **handler_kwargs)
             except Exception as ex:
@@ -700,10 +716,10 @@ class StockBybit(IStock):
                 is_snapshot = True if message["type"] == "snapshot" else False
 
                 response = IOrderBook()
-
+                response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 response.Time = utils.ts_to_datetime(message["ts"])
 
-                handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Asks.api_name],
+                handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"]["a"],
                                                                          is_snapshot=is_snapshot,
                                                                          big_snapshot=handle_ticker.asks_d_snapshot)
                 if handle_ticker.asks_d_snapshot is None:
@@ -711,7 +727,7 @@ class StockBybit(IStock):
                 else:
                     response.Asks = np.array([[p,v] for p,v in handle_ticker.asks_d_snapshot.items()])
 
-                handle_ticker.bids_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"][self.map.order_book.Bids.api_name],
+                handle_ticker.bids_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"]["b"],
                                                                          is_snapshot=is_snapshot,
                                                                          big_snapshot=handle_ticker.bids_d_snapshot)
                 if handle_ticker.bids_d_snapshot is None:
@@ -737,21 +753,21 @@ class StockBybit(IStock):
             try:
                 responses = []
                 for data in message["data"]:
-                    map_position = PositionBybit(api_response_type="websocket")
                     response = IPosition()
-                    response.Pair = data[map_position.Pair.api_name]
-                    response.CreatedTime = utils.ts_to_datetime(data[map_position.CreatedTime.api_name])
-                    response.UpdatedTime = utils.ts_to_datetime(data[map_position.UpdatedTime.api_name])
-                    response.Side = "SHORT" if data[map_position.Side.api_name] == "Sell" else "LONG"
-                    response.Size = float(data[map_position.Size.api_name])
+                    response.Time = utils.ts_to_datetime(data["updatedTime"])
+                    response.Pair = data["symbol"]
+                    response.CreatedTime = utils.ts_to_datetime(data["createdTime"])
+                    response.UpdatedTime = utils.ts_to_datetime(data["updatedTime"])
+                    response.Side = "SHORT" if data["side"] == "Sell" else "LONG"
+                    response.Size = float(data["size"])
                     response.AvgPrice = float(
-                        data[map_position.AvgPrice.api_name])  # self.formula_AEP(entry_qty_price_list=)
-                    response.Leverage = float(data[map_position.Leverage.api_name])
-                    response.MarkPrice_ = float(data[map_position.MarkPrice_.api_name])
-                    response.StopLoss = None if data[map_position.StopLoss.api_name] == "" else float(
-                        data[map_position.StopLoss.api_name])
-                    response.TakeProfit = None if data[map_position.TakeProfit.api_name] == "" else float(
-                        data[map_position.TakeProfit.api_name])
+                        data["entryPrice"])  # self.formula_AEP(entry_qty_price_list=)
+                    response.Leverage = float(data["leverage"])
+                    response.MarkPrice_ = float(data["markPrice"])
+                    response.StopLoss = None if data["stopLoss"] == "" else float(
+                        data["stopLoss"])
+                    response.TakeProfit = None if data["takeProfit"] == "" else float(
+                        data["takeProfit"])
 
                     instrument_info_obj = self.get_instrument_info(pair=response.Pair)
 

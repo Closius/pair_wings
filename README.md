@@ -45,6 +45,7 @@ Roadmap
 Open questions: 
 
 1. Should I use SqlAlchemy ORM ?
+2. Should I try https://github.com/ccxt/ccxt ?  
 
 Prerequisites
 -------------

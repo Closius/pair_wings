@@ -38,13 +38,14 @@
 
 import pandas as pd
 
-from lib.stocks.db_map.map_interface import IMap
+from lib.map_interface import IMap
 
 
 class State(IMap):
 
     def __init__(self, **kwargs):
         super().__init__()
+        self._remember_last_N = None
         self._dataframes = {k: v.to_dataframe() for k, v in IMap().__dict__.items()}
         self.append_single_snapshot(**kwargs)
         # The first snapshot is always full of Nones
@@ -62,4 +63,10 @@ class State(IMap):
 
             self._dataframes[field_name] = pd.concat([self._dataframes[field_name], field_obj.to_dataframe()],
                                                      ignore_index=True)
+            if self._remember_last_N:
+                self._dataframes[field_name].drop(
+                    self._dataframes[field_name].index[:-self._remember_last_N], inplace=True)
 
+    def __getitem__(self, item):
+        for k in self._dataframes.keys():
+            self._dataframes[k] = self._dataframes[k].drop(index=[0])

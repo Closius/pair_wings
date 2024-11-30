@@ -5,7 +5,6 @@ import time
 from lib import data_show, data_collector, utils, random_trade
 
 from lib.stocks.stock_bybit import StockBybit
-from lib.stocks.db_map.map_bybit import MapBybit
 
 
 def main():
@@ -30,15 +29,14 @@ def main():
     log.info("")
     r = input()
     log.info(r)
-    map = MapBybit()
-    stock = StockBybit(map=map, account_name="pair_wings_demo",
+    stock = StockBybit(account_name="pair_wings_demo",
                        api_secrets_file="bybit_api_secret.json",
                        settings_file="bybit_settings.json")
     # stock = StockBybit(map=map)
     db_filepath = "main.db"
     event = threading.Event()
     if r == "1":
-        dc = data_collector.DataCollector(stock, db_filepath, map)
+        dc = data_collector.DataCollector(stock, db_filepath)
         dc.collect_stream_tickers(pair=pair, stop_event=event, recreate=True)
         dc.collect_stream_candles_ticker(pair=pair, interval="5", stop_event=event, recreate=True)
         dc.collect_stream_order_book(pair=pair, stop_event=event, recreate=True)
@@ -50,18 +48,18 @@ def main():
         log.info("Interrupted")
 
     elif r == "2":
-        dc = data_collector.DataCollector(stock, db_filepath, map)
+        dc = data_collector.DataCollector(stock, db_filepath)
         dc.collect_history_candles(pair=pair, interval="5",
                                    start='16.09.2024 19:00:00,00',
                                    end=None,
                                    recreate=True)
 
     elif r == "3":
-        data_show.draw_candles(db_filepath, pair=pair, map=map)
+        data_show.draw_candles(db_filepath, pair=pair)
     elif r == "4":
-        data_show.read_order_book(db_filepath, pair=pair, map=map)
+        data_show.read_order_book(db_filepath, pair=pair)
     elif r == "5":
-        data_show.read_stream_candles(db_filepath, pair=pair, interval="5", map=map)
+        data_show.read_stream_candles(db_filepath, pair=pair, interval="5")
     elif r == "6":
 
         def handler(message):
