@@ -34,7 +34,8 @@ Roadmap
 -------
 
 1. Finish the implementation of ByBit backend which allows to finish implementations of the data maps.
-2. Check TODO in the code
+2. Use python.decimal.Decimal instead of float for money related values
+3. Check TODO in the code
 3. Write a simple MA strategy.
 4. Implement the stock exchange based on the data from the local SQL database
 5. Develop the Strategy runner. Test on the local SQL database

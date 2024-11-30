@@ -70,3 +70,5 @@ class State(IMap):
     def __getitem__(self, item):
         for k in self._dataframes.keys():
             self._dataframes[k] = self._dataframes[k].drop(index=[0])
+
+# TODO: Create StateCollector which will also collect data in DB

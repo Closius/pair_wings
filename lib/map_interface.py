@@ -1,13 +1,10 @@
 """
-Mapping between Stock API and the local database
+Stock entities: objects and local database mapping
 
-in the implementation you have to set "api_name" for each field:
-
-`Id` is the id for every table = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+`Id` is the id for every table
 
 > Note: The order of fields might be important if the Stock API
         returns list of values (not a dict with field names)
-
 """
 import pandas as pd
 
@@ -80,7 +77,7 @@ class ITicker(_base):
             'FundingRate': 0.05
     """
     def __init__(self):
-        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")
+        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")  # == self.Time
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]")
         self.MarkPrice = _Field("MarkPrice", "REAL", "float64")
         self.Ask1Size = _Field("Ask1Size", "REAL", "float64")
@@ -105,7 +102,7 @@ class ICandle(_base):
         'Turnover': 35447184.1698
     """
     def __init__(self):
-        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")
+        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]") # == self.Time
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]")
         self.Open = _Field("Open", "REAL", "float64")
         self.High = _Field("High", "REAL", "float64")
@@ -132,7 +129,7 @@ class ICandleTicker(_base):
         'Turnover': 132078946.7517
     """
     def __init__(self):
-        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")
+        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")  # == self.Time
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]")
         self.Start = _Field("Start", "TIMESTAMP", "datetime64[ns]")  # when the candle starts
         self.End = _Field("End", "TIMESTAMP", "datetime64[ns]")
@@ -153,7 +150,7 @@ class IOrderBook(_base):
         'Bids': np.array(shape=(50, 2)),  # [price, volume], order: price higher -> lower
     """
     def __init__(self):
-        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")
+        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")  # == self.Time
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]")
         self.Bids = _Field("Bids", _NDARRAY_DB_TYPE, "object")
         self.Asks = _Field("Asks", _NDARRAY_DB_TYPE, "object")
@@ -176,7 +173,7 @@ class IPosition(_base):
         'TakeProfit': float | None,
     """
     def __init__(self):
-        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")
+        self.Id = _Field("Id", "TIMESTAMP UNIQUE", "datetime64[ns]")  # == self.Time
         self.Time = _Field("Time", "TIMESTAMP UNIQUE", "datetime64[ns]")
         self.Pair = _Field("Pair", "TEXT", "string")
         self.CreatedTime = _Field("CreatedTime", "TIMESTAMP", "datetime64[ns]")

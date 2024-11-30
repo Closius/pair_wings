@@ -1,6 +1,5 @@
 import logging
 import time
-import datetime
 
 import json5
 import numpy as np
@@ -117,7 +116,7 @@ class StockBybit(IStock):
             )
 
             r = IInstrumentInfo()
-            r.Time = utils.ts_to_datetime(instr_info["time"])
+            r.Id = utils.ts_to_datetime(instr_info["time"])
             r.MaxLeverage = float(instr_info["result"]["list"][0]["leverageFilter"]["maxLeverage"])
             r.PriceScale = int(instr_info["result"]["list"][0]["priceScale"])
             min_qty_raw_str = instr_info["result"]["list"][0]["lotSizeFilter"]["minOrderQty"]
@@ -520,8 +519,8 @@ class StockBybit(IStock):
         for candle in self.http.get_kline(**kargs)["result"]["list"]:
             response = ICandle()
 
-            response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             response.Time = utils.ts_to_datetime(candle[0])
+            response.Id = response.Time
             response.Open = candle[1]
             response.High = candle[2]
             response.Low = candle[3]
@@ -536,8 +535,8 @@ class StockBybit(IStock):
                                                 symbol=pair)
 
         response = ITicker()
-        response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         response.Time = utils.ts_to_datetime(message["time"])
+        response.Id = response.Time
         message = message["result"]["list"][0]
         response.MarkPrice = float(message["markPrice"])
         response.Ask1Size = float(message["ask1Size"])
@@ -573,8 +572,8 @@ class StockBybit(IStock):
             # log.info(json.dumps(data, indent=4))
 
         response = IPosition()
-        response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         response.Time = utils.ts_to_datetime(data["updatedTime"])
+        response.Id = response.Time
         response.Pair = pair
         response.CreatedTime = utils.ts_to_datetime(data["createdTime"])
         response.UpdatedTime = utils.ts_to_datetime(data["updatedTime"])
@@ -629,8 +628,8 @@ class StockBybit(IStock):
                 data = message["data"][0]
                 response = ICandleTicker()
 
-                response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 response.Time = utils.ts_to_datetime(data["timestamp"])
+                response.Id = response.Time
                 response.Start = utils.ts_to_datetime(data["start"])
                 response.End = utils.ts_to_datetime(data["end"])
                 response.Open = data["open"]
@@ -661,8 +660,8 @@ class StockBybit(IStock):
                 data["ts"] = message["ts"]
                 response = ITicker()
 
-                response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 response.Time = utils.ts_to_datetime(data["ts"])
+                response.Id = response.Time
                 response.MarkPrice = data["markPrice"]
                 response.Ask1Size = data["ask1Size"]
                 response.Bid1Size = data["bid1Size"]
@@ -716,8 +715,8 @@ class StockBybit(IStock):
                 is_snapshot = True if message["type"] == "snapshot" else False
 
                 response = IOrderBook()
-                response.Id = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 response.Time = utils.ts_to_datetime(message["ts"])
+                response.Id = response.Time
 
                 handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"]["a"],
                                                                          is_snapshot=is_snapshot,
@@ -755,6 +754,7 @@ class StockBybit(IStock):
                 for data in message["data"]:
                     response = IPosition()
                     response.Time = utils.ts_to_datetime(data["updatedTime"])
+                    response.Id = response.Time
                     response.Pair = data["symbol"]
                     response.CreatedTime = utils.ts_to_datetime(data["createdTime"])
                     response.UpdatedTime = utils.ts_to_datetime(data["updatedTime"])
