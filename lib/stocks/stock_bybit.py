@@ -10,8 +10,8 @@ from pybit.unified_trading import HTTP
 from lib.stocks.stock_interface import IStock, atomic_in_threads
 from lib import utils
 
-from lib.map_interface import (ITicker, ICandle, ICandleTicker, IOrderBook, IPosition,
-                               IInstrumentInfo)
+from lib.schema import (Ticker, Candle, CandleTicker, OrderBook, Position,
+                        InstrumentInfo)
 
 
 class StockBybit(IStock):
@@ -115,7 +115,7 @@ class StockBybit(IStock):
                 symbol=pair,
             )
 
-            r = IInstrumentInfo()
+            r = InstrumentInfo()
             r.Id = utils.ts_to_datetime(instr_info["time"])
             r.MaxLeverage = float(instr_info["result"]["list"][0]["leverageFilter"]["maxLeverage"])
             r.PriceScale = int(instr_info["result"]["list"][0]["priceScale"])
@@ -517,7 +517,7 @@ class StockBybit(IStock):
         # TODO: it doesnt return everything! probably pagination
         # It is not efficient but allow to use an universal DataCollector
         for candle in self.http.get_kline(**kargs)["result"]["list"]:
-            response = ICandle()
+            response = Candle()
 
             response.Time = utils.ts_to_datetime(candle[0])
             response.Id = response.Time
@@ -534,7 +534,7 @@ class StockBybit(IStock):
         message = self.http_private.get_tickers(category="linear",
                                                 symbol=pair)
 
-        response = ITicker()
+        response = Ticker()
         response.Time = utils.ts_to_datetime(message["time"])
         response.Id = response.Time
         message = message["result"]["list"][0]
@@ -571,7 +571,7 @@ class StockBybit(IStock):
             log.info(f"Bankruptcy price (from stock): {data['bustPrice']}")
             # log.info(json.dumps(data, indent=4))
 
-        response = IPosition()
+        response = Position()
         response.Time = utils.ts_to_datetime(data["updatedTime"])
         response.Id = response.Time
         response.Pair = pair
@@ -626,7 +626,7 @@ class StockBybit(IStock):
             # reformat
             try:
                 data = message["data"][0]
-                response = ICandleTicker()
+                response = CandleTicker()
 
                 response.Time = utils.ts_to_datetime(data["timestamp"])
                 response.Id = response.Time
@@ -658,7 +658,7 @@ class StockBybit(IStock):
             try:
                 data = message["data"]
                 data["ts"] = message["ts"]
-                response = ITicker()
+                response = Ticker()
 
                 response.Time = utils.ts_to_datetime(data["ts"])
                 response.Id = response.Time
@@ -714,7 +714,7 @@ class StockBybit(IStock):
             try:
                 is_snapshot = True if message["type"] == "snapshot" else False
 
-                response = IOrderBook()
+                response = OrderBook()
                 response.Time = utils.ts_to_datetime(message["ts"])
                 response.Id = response.Time
 
@@ -752,7 +752,7 @@ class StockBybit(IStock):
             try:
                 responses = []
                 for data in message["data"]:
-                    response = IPosition()
+                    response = Position()
                     response.Time = utils.ts_to_datetime(data["updatedTime"])
                     response.Id = response.Time
                     response.Pair = data["symbol"]

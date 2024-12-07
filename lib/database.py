@@ -5,8 +5,8 @@ import io
 
 import pandas as pd
 
-from lib.map_interface import (
-    IMap, ITicker, ICandle, ICandleTicker, IOrderBook, _NDARRAY_DB_TYPE)
+from lib.schema import (
+    SchemaAll, Ticker, Candle, CandleTicker, OrderBook, _NDARRAY_DB_TYPE)
 from lib import utils
 
 
@@ -36,7 +36,7 @@ class DB(metaclass=utils.Singleton):
         self.log = logging.getLogger(__name__)
         self.log.info("Database init")
         self.filepath = filepath
-        self.map = IMap()
+        self.map = SchemaAll()
         self.con = sqlite3.connect(self.filepath, detect_types=sqlite3.PARSE_DECLTYPES)
         self.cur = self.con.cursor()
 
@@ -102,7 +102,7 @@ class DB(metaclass=utils.Singleton):
         """
         )
 
-    def insert_ticker(self, pair, obj: ITicker):
+    def insert_ticker(self, pair, obj: Ticker):
         # preserve the order as in Map and DB
         cols = [getattr(obj, x.db_name) for x in self.map.ticker.init_fields.values()]
         q = ",".join(["?"] * len(self.map.ticker.get_db_names()))
@@ -114,7 +114,7 @@ class DB(metaclass=utils.Singleton):
         )
         self.con.commit()
 
-    def insert_candle(self, pair, obj: ICandle):
+    def insert_candle(self, pair, obj: Candle):
         """
         Insert into the historical candles table. each row - the finished candle for current period
         """
@@ -129,7 +129,7 @@ class DB(metaclass=utils.Singleton):
         )
         self.con.commit()
 
-    def insert_candle_ticker(self, pair, interval, obj: ICandleTicker):
+    def insert_candle_ticker(self, pair, interval, obj: CandleTicker):
         # preserve the order as in Map and DB
         cols = [getattr(obj, x.db_name) for x in self.map.candle_ticker.init_fields.values()]
         q = ",".join(["?"] * len(self.map.candle_ticker.get_db_names()))
@@ -141,7 +141,7 @@ class DB(metaclass=utils.Singleton):
         )
         self.con.commit()
 
-    def insert_order_book(self, pair, obj: IOrderBook):
+    def insert_order_book(self, pair, obj: OrderBook):
         # preserve the order as in Map and DB
         cols = [getattr(obj, x.db_name) for x in self.map.order_book.init_fields.values()]
         q = ",".join(["?"]*len(self.map.order_book.get_db_names()))

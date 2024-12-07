@@ -5,7 +5,7 @@ from typing import List
 
 from concurrent.futures import ThreadPoolExecutor
 
-from lib.map_interface import (ITicker, ICandle, IPosition, IInstrumentInfo)
+from lib.schema import (Ticker, Candle, Position, InstrumentInfo)
 from lib.rwlock import RWLock
 
 
@@ -39,7 +39,7 @@ def atomic_in_threads(rwlock: RWLock, side):
 
 class IStock:
     """
-        Methods return data according to the implementation of IMap (DB names)
+        Methods return data according to the implementation of SchemaAll (DB names)
 
         only trading on derivatives (futures)!
     """
@@ -102,14 +102,14 @@ class IStock:
         """
         raise NotImplemented()
 
-    def get_instrument_info(self, pair, verbose=False) -> IInstrumentInfo:
+    def get_instrument_info(self, pair, verbose=False) -> InstrumentInfo:
         """
         Instrument information
 
         Store the requested info in self._instrument_infos
 
         :param pair:
-        :return: IInstrumentInfo()
+        :return: InstrumentInfo()
         """
         raise NotImplemented()
 
@@ -179,7 +179,7 @@ class IStock:
         """
         raise NotImplemented()
 
-    def get_history_tohlcv(self, pair, interval, start, end=None) -> List[ICandle]:
+    def get_history_tohlcv(self, pair, interval, start, end=None) -> List[Candle]:
         """
 
         :param pair: "BTCUSDT"
@@ -188,18 +188,18 @@ class IStock:
         :param end: "16.09.2024 19:00:00,00" or None for the current date - later date
 
         :return [
-                    ICandle ,
+                    Candle ,
                     ...
                 ]
         """
         raise NotImplemented()
 
-    def get_ticker(self, pair) -> ITicker:
+    def get_ticker(self, pair) -> Ticker:
         """
         for tests only. use stream for prod
 
         :param pair:
-        :return: ITicker
+        :return: Ticker
         """
         raise NotImplemented()
 
@@ -211,11 +211,11 @@ class IStock:
         """
         raise NotImplemented()
 
-    def get_position_status(self, pair) -> IPosition:
+    def get_position_status(self, pair) -> Position:
         """
         for tests and some internal only. use stream for prod
 
-        :return: IPosition
+        :return: Position
         """
         raise NotImplemented()
 
@@ -225,7 +225,7 @@ class IStock:
         """
         :param pair: "BTCUSDT"
         :param stop_event: to stop streaming
-        :return to `handler` ITicker
+        :return to `handler` Ticker
         """
         raise NotImplemented()
 
@@ -236,7 +236,7 @@ class IStock:
 
         :param pair: "BTCUSDT"
         :param stop_event: to stop streaming
-        :return to `handler` ICandleTicker
+        :return to `handler` CandleTicker
         """
         raise NotImplemented()
 
@@ -247,7 +247,7 @@ class IStock:
 
         :param pair: "BTCUSDT"
         :param stop_event: to stop streaming
-        :return to `handler` IOrderBook
+        :return to `handler` OrderBook
         """
         raise NotImplemented()
 
@@ -259,6 +259,6 @@ class IStock:
         Subscribe to the position stream to see changes to your position data in real-time.
 
         :param stop_event: to stop streaming
-        :return to `handler` IPosition. Handler handles list of IPosition
+        :return to `handler` Position. Handler handles list of Position
         """
         raise NotImplemented()

@@ -44,7 +44,7 @@ class _base:
         return df
 
 
-class IInstrumentInfo(_base):
+class InstrumentInfo(_base):
     """
     Taker - open/close by market
     Maker - open/close by limit (add liquidity)
@@ -65,7 +65,7 @@ class IInstrumentInfo(_base):
         super().__init__()
 
 
-class ITicker(_base):
+class Ticker(_base):
     """
         Fields after set:
             'Time': datetime.datetime(2024, 10, 2, 22, 54, 17, 928000),
@@ -88,7 +88,7 @@ class ITicker(_base):
         super().__init__()
 
 
-class ICandle(_base):
+class Candle(_base):
     """
     Historical candles. Finished
 
@@ -113,7 +113,7 @@ class ICandle(_base):
         super().__init__()
 
 
-class ICandleTicker(_base):
+class CandleTicker(_base):
     """
     Stream of candles. Finished
 
@@ -142,7 +142,7 @@ class ICandleTicker(_base):
         super().__init__()
 
 
-class IOrderBook(_base):
+class OrderBook(_base):
     """
     Fields after set:
         'Time': datetime.datetime(2024, 10, 2, 23, 20, 39, 873000),
@@ -157,7 +157,7 @@ class IOrderBook(_base):
         super().__init__()
 
 
-class IPosition(_base):
+class Position(_base):
     """
     If 'Size' == 0 -> Position is closed
 
@@ -194,10 +194,10 @@ class IPosition(_base):
         super().__init__()
 
 
-class IMap:
+class SchemaAll:
     def __init__(self):
-        self.ticker = ITicker()
-        self.candle = ICandle()
-        self.candle_ticker = ICandleTicker()
-        self.order_book = IOrderBook()
-        self.position = IPosition()
+        self.ticker = Ticker()
+        self.candle = Candle()
+        self.candle_ticker = CandleTicker()
+        self.order_book = OrderBook()
+        self.position = Position()

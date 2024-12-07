@@ -5,7 +5,7 @@ from lib import database
 
 from lib.stocks.stock_interface import IStock
 
-from lib.map_interface import ITicker, ICandleTicker, IOrderBook
+from lib.schema import Ticker, CandleTicker, OrderBook
 
 
 class DataCollector:
@@ -21,7 +21,7 @@ class DataCollector:
         self.log.info(f"collect_tickers {pair}")
         self.db.create_ticker_table(pair, recreate)
 
-        def handler(message: ITicker):
+        def handler(message: Ticker):
             _db = database.DB(self.db_filepath)
             _db.insert_ticker(
                 pair=pair,
@@ -58,7 +58,7 @@ class DataCollector:
         self.log.info(f"collect_stream_candles_ticker {pair} {interval}")
         self.db.create_candle_ticker_table(pair, interval, recreate)
 
-        def handler(message: ICandleTicker):
+        def handler(message: CandleTicker):
             _db = database.DB(self.db_filepath)
             _db.insert_candle_ticker(
                 pair=pair,
@@ -75,7 +75,7 @@ class DataCollector:
         self.log.info(f"collect_stream_order_book {pair}")
         self.db.create_order_book_table(pair, recreate)
 
-        def handler(message: IOrderBook):
+        def handler(message: OrderBook):
             _db = database.DB(self.db_filepath)
             _db.insert_order_book(
                 pair=pair,
