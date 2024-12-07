@@ -1,4 +1,5 @@
 import logging
+import os.path
 import threading
 import time
 
@@ -36,6 +37,8 @@ def main():
     db_filepath = "main.db"
     event = threading.Event()
     if r == "1":
+        if os.path.exists(db_filepath):
+            os.remove(db_filepath)
         dc = data_collector.DataCollector(stock, db_filepath)
         dc.collect_stream_tickers(pair=pair, stop_event=event, recreate=True)
         dc.collect_stream_candles_ticker(pair=pair, interval="5", stop_event=event, recreate=True)
@@ -48,9 +51,11 @@ def main():
         log.info("Interrupted")
 
     elif r == "2":
+        if os.path.exists(db_filepath):
+            os.remove(db_filepath)
         dc = data_collector.DataCollector(stock, db_filepath)
         dc.collect_history_candles(pair=pair, interval="5",
-                                   start_utc='06.12.2024 19:00:00,00',
+                                   start_utc='01.12.2024 19:00:00,00',
                                    end_utc=None,
                                    recreate=True)
 
