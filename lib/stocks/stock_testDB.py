@@ -18,7 +18,7 @@ class StockTestDB(IStock):
     def close_SHORT_LONG(self, uid, limit=None):
         raise NotImplemented()
 
-    def get_history_tohlcv(self, pair, interval, start, end=None):
+    def get_history_tohlcv(self, pair, interval, start_utc, end_utc=None):
         raise NotImplemented()
 
     def stream_ticker(self, pair, stop_event):

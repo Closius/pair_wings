@@ -1,3 +1,5 @@
+import datetime
+import json
 import logging
 import time
 
@@ -100,6 +102,26 @@ class StockBybit(IStock):
         for coin in wb["result"]["list"][0]["coin"]:
             if coin["coin"] == "USDT":
                 return float(coin["walletBalance"])
+
+    def get_timedelta_utc_minus_server(self, verbose=False) -> datetime.timedelta:
+        log = logging.getLogger()
+        if not self._timedelta_utc_minus_server:
+            resp = self.http.get_server_time()
+            t_server = utils.ts_to_datetime(resp["time"])
+            t_now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            td = t_now_utc - t_server
+            if verbose:
+                log.info(f"resp:")
+                log.info(json.dumps(resp, indent=4))
+                log.info(f"t_now_utc: {utils.datetime_to_text(t_now_utc)}")
+                log.info(f"t_server: {utils.datetime_to_text(t_server)}")
+            self._timedelta_utc_minus_server = td
+        else:
+            if verbose:
+                log.info(f"already calculated, get from memory")
+        if verbose:
+            log.info(f"timedelta_utc_minus_server: {self._timedelta_utc_minus_server}")
+        return self._timedelta_utc_minus_server
 
     def get_funding_rate(self, pair, verbose=False):
         ticker_obj = self.get_ticker(pair=pair)
@@ -504,31 +526,84 @@ class StockBybit(IStock):
                 "ROI_percent": ROI_or_unrealized_pl_percent,
                 "Closed_PL_Money": closed_pl_usdt}
 
-    def get_history_tohlcv(self, pair, interval, start, end=None):
-        kargs = {
-            "category": "linear",
-            "symbol": pair,
-            "interval": interval,
-            "start": utils.datetime_text_to_ts(start),
-        }
-        if end:
-            kargs["end"] = utils.datetime_text_to_ts(end)
+    def get_history_tohlcv(self, pair, interval, start_utc: str,
+                           end_utc: str = None, verbose=False):
+        """
+            start_utc, end_utc - datetime in UTC  format: lib/utils.py  DATA_FORMAT
+        """
+        log = logging.getLogger(pair)
+        allowed_intervals = ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W"]
+        if interval not in allowed_intervals:
+            raise ValueError(f"Wrong interval '{interval}'. Allowed intervals {allowed_intervals}")
 
-        # TODO: it doesnt return everything! probably pagination
-        # It is not efficient but allow to use an universal DataCollector
-        for candle in self.http.get_kline(**kargs)["result"]["list"]:
-            response = Candle()
+        # calculate paginations
+        limit = 1000  # amount of candles in response. 1000 is max for bybit
+        start_dt_utc = utils.datetime_text_to_datetime(start_utc)
+        if interval == "D":
+            interval_dt = 1440
+        elif interval == "W":
+            interval_dt = 10080
+        else:
+            interval_dt = int(interval)
+        resp_all = []
+        if end_utc:
+            end_dt_utc = utils.datetime_text_to_datetime(end_utc)
+        else:
+            end_dt_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
-            response.Time = utils.ts_to_datetime(candle[0])
-            response.Id = response.Time
-            response.Open = candle[1]
-            response.High = candle[2]
-            response.Low = candle[3]
-            response.Close = candle[4]
-            response.Volume = candle[5]
-            response.Turnover = candle[6]
+        # convert from UTC to server time
+        timedelta_utc_minus_server = self.get_timedelta_utc_minus_server()
+        start_dt = (start_dt_utc - timedelta_utc_minus_server).replace(microsecond=0)
+        end_dt = (end_dt_utc - timedelta_utc_minus_server).replace(microsecond=0)
 
-            yield response
+        if verbose:
+            log.info(f" start_utc: {utils.datetime_to_text(start_dt_utc)}")
+            log.info(f" end_utc: {utils.datetime_to_text(end_dt_utc)}")
+            log.info(f" start server: {utils.datetime_to_text(start_dt)}")
+            log.info(f" end server: {utils.datetime_to_text(end_dt)}")
+
+        while True:
+            kargs = {
+                "category": "linear",
+                "symbol": pair,
+                "interval": interval,
+                "start": utils.datetime_to_ts(start_dt),
+                "limit": limit
+            }
+            if end_utc:
+                kargs["end"] = utils.datetime_to_ts(end_dt)
+
+            # Attention! API rate limit is considered in bybit api
+            resp = self.http.get_kline(**kargs)
+            if not resp["result"]["list"]:
+                break
+            first_dt = utils.ts_to_datetime(resp["result"]["list"][-1][0])
+            last_dt = utils.ts_to_datetime(resp["result"]["list"][0][0])
+            if verbose:
+                log.info(f"\t >> {utils.datetime_to_text(first_dt)} -> {utils.datetime_to_text(last_dt)}")
+            for candle in resp["result"]["list"]:
+                response = Candle()
+
+                response.Time = utils.ts_to_datetime(candle[0])
+                response.Id = response.Time
+                response.Open = candle[1]
+                response.High = candle[2]
+                response.Low = candle[3]
+                response.Close = candle[4]
+                response.Volume = candle[5]
+                response.Turnover = candle[6]
+                resp_all.append(response)
+
+            if end_dt <= last_dt:
+                break
+            else:
+                start_dt = last_dt + datetime.timedelta(minutes=interval_dt)
+
+        if verbose:
+            log.info(f"history_tohlcv collection finished")
+
+        for c in resp_all:
+            yield c
 
     def get_ticker(self, pair):
         message = self.http_private.get_tickers(category="linear",

@@ -27,26 +27,26 @@ class DataCollector:
                 pair=pair,
                 obj=message
             )
-            self.log.info(f'ticker {utils.datetime_to_ts(message.Time)} | '
+            self.log.info(f'ticker {utils.datetime_to_text(message.Time)} | '
                           f'{message.MarkPrice}')
 
         self.stock.stream_ticker(handler=handler, handler_kwargs={}, stop_event=stop_event,
                                  pair=pair)
 
-    def collect_history_candles(self, pair, interval, start, end=None, recreate=False):
+    def collect_history_candles(self, pair, interval, start_utc, end_utc=None, recreate=False):
         """
 
         :param pair:
         :param interval: 1,3,5,15,30,60,120,240,360,720,D,M,W
-        :param start: '20.12.2016 09:38:42,76'
-        :param end: '20.12.2016 09:38:42,76'
+        :param start_utc: '20.12.2016 09:38:42,76'
+        :param end_utc: '20.12.2016 09:38:42,76'
         :param recreate:
         :return:
         """
         self.log.info(f"collect_candles {pair}")
         self.db.create_candle_table(pair, recreate)
 
-        for candle in self.stock.get_history_tohlcv(pair, interval, start, end):
+        for candle in self.stock.get_history_tohlcv(pair, interval, start_utc, end_utc, verbose=True):
             self.db.insert_candle(
                 pair=pair,
                 obj=candle
@@ -65,7 +65,7 @@ class DataCollector:
                 interval=interval,
                 obj=message
             )
-            self.log.info(f'candle {utils.datetime_to_ts(message.Time)} | '
+            self.log.info(f'candle {utils.datetime_to_text(message.Time)} | '
                           f'{message.Close}')
 
         self.stock.stream_tohlcv(handler=handler, handler_kwargs={}, stop_event=stop_event,
@@ -81,7 +81,7 @@ class DataCollector:
                 pair=pair,
                 obj=message
             )
-            self.log.info(f'order book {utils.datetime_to_ts(message.Time)}')
+            self.log.info(f'order book {utils.datetime_to_text(message.Time)}')
 
         self.stock.stream_order_book(handler=handler, handler_kwargs={}, stop_event=stop_event,
                                  pair=pair)

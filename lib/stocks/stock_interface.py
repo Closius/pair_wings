@@ -1,5 +1,6 @@
 import logging
 import functools
+import datetime
 import threading
 from typing import List
 
@@ -50,6 +51,7 @@ class IStock:
         self.log_stock = None  # logging.getLogger() # take a root logger!
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=None)
         self._instrument_infos = {}
+        self._timedelta_utc_minus_server = None
 
     def stream_decorator(func):
         """
@@ -90,6 +92,12 @@ class IStock:
         Return USDT wallet deposit
 
         :return: float
+        """
+        raise NotImplemented()
+
+    def get_timedelta_utc_minus_server(self, verbose=False) -> datetime.timedelta:
+        """
+        Returns the timedelta: current UTC time - current Stock server time
         """
         raise NotImplemented()
 
@@ -179,13 +187,13 @@ class IStock:
         """
         raise NotImplemented()
 
-    def get_history_tohlcv(self, pair, interval, start, end=None) -> List[Candle]:
+    def get_history_tohlcv(self, pair, interval, start_utc, end_utc=None, verbose=False) -> List[Candle]:
         """
 
         :param pair: "BTCUSDT"
         :param interval: "5", "10", "30", ...
-        :param start: "16.09.2024 19:00:00,00" - early date
-        :param end: "16.09.2024 19:00:00,00" or None for the current date - later date
+        :param start_utc: "16.09.2024 19:00:00,00" - early date   in UTC
+        :param end_utc: "16.09.2024 19:00:00,00" or None for the current date - later date   in UTC
 
         :return [
                     Candle ,

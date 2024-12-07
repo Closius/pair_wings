@@ -62,7 +62,22 @@ def datetime_text_to_ts(dt_text: str):
     return dt_obj.timestamp() * 1000
 
 
-def datetime_to_ts(dt: datetime):
+def datetime_to_ts(dt: datetime.datetime):
+    """
+    :return: timestamp im milliseconds
+    """
+    return dt.timestamp() * 1000
+
+
+def datetime_text_to_datetime(dt_text: str):
+    """
+
+    :param dt_text: see DATA_FORMAT
+    """
+    return datetime.datetime.strptime(dt_text, DATA_FORMAT)
+
+
+def datetime_to_text(dt: datetime):
     return dt.strftime(DATA_FORMAT)
 
 

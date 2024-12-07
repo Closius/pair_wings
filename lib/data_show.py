@@ -69,7 +69,7 @@ def read_order_book(db_filepath, pair):
 
     for index, row in data_order_book.iterrows():
 
-        ax.set_title(f"Order Book. {utils.datetime_to_ts(row['Time'])}")
+        ax.set_title(f"Order Book. {utils.datetime_to_text(row['Time'])}")
 
         ask_price = []
         ask_qty = []

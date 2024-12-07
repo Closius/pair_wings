@@ -50,8 +50,8 @@ def main():
     elif r == "2":
         dc = data_collector.DataCollector(stock, db_filepath)
         dc.collect_history_candles(pair=pair, interval="5",
-                                   start='16.09.2024 19:00:00,00',
-                                   end=None,
+                                   start_utc='06.12.2024 19:00:00,00',
+                                   end_utc=None,
                                    recreate=True)
 
     elif r == "3":
@@ -64,7 +64,7 @@ def main():
 
         def handler(message):
             for m in message:
-                log.info(f'position_status {utils.datetime_to_ts(m.UpdatedTime)} | '
+                log.info(f'position_status {utils.datetime_to_text(m.UpdatedTime)} | '
                               f'{m.Pair} | {m.Size}' )
 
         stock.stream_position_status(handler=handler, handler_kwargs={}, stop_event=event)
