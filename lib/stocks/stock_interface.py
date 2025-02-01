@@ -42,6 +42,8 @@ class IStock:
     """
         Methods return data according to the implementation of SchemaAll (DB names)
 
+        Att times must be in UTC, no timezone
+
         only trading on derivatives (futures)!
     """
 
@@ -75,6 +77,22 @@ class IStock:
 
     stream_decorator = staticmethod(stream_decorator)
 
+    def datetime_from_UTC_to_server_time(self, utc_time: datetime.datetime) -> datetime.datetime:
+        """
+            No timezone, no microseconds
+
+            :return datetime.datetime on server
+        """
+        return NotImplemented()
+
+    def datetime_from_server_time_to_UTC(self, server_time: datetime.datetime) -> datetime.datetime:
+        """
+            No timezone, no microseconds
+
+            :return datetime.datetime UTC
+        """
+        return NotImplemented()
+
     def get_min_order_qty_price(self, pair, verbose=False):
         """
         By market
@@ -92,12 +110,6 @@ class IStock:
         Return USDT wallet deposit
 
         :return: float
-        """
-        raise NotImplemented()
-
-    def get_timedelta_utc_minus_server(self, verbose=False) -> datetime.timedelta:
-        """
-        Returns the timedelta: current UTC time - current Stock server time
         """
         raise NotImplemented()
 

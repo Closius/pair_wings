@@ -64,6 +64,31 @@ class StockBybit(IStock):
                 api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
             )
 
+    @property
+    def _timedelta_utc_now_minus_server(self) -> datetime.timedelta:
+        if not self._timedelta_utc_minus_server:
+            resp = self.http.get_server_time()
+            t_server = utils.ts_to_datetime(resp["time"]).replace(microsecond=0).replace(second=0)
+            t_now_utc = utils.datetime_now().replace(second=0)
+            self._timedelta_utc_minus_server = t_now_utc - t_server
+        return self._timedelta_utc_minus_server
+
+    def datetime_from_UTC_to_server_time(self, utc_time: datetime.datetime) -> datetime.datetime:
+        """
+            No timezone, no microseconds
+
+            :return datetime.datetime on server
+        """
+        return (utc_time - self._timedelta_utc_now_minus_server).replace(microsecond=0)
+
+    def datetime_from_server_time_to_UTC(self, server_time: datetime.datetime) -> datetime.datetime:
+        """
+            No timezone, no microseconds
+
+            :return datetime.datetime UTC
+        """
+        return (server_time + self._timedelta_utc_now_minus_server).replace(microsecond=0)
+
     def _amount_money_to_qty(self, amount_money, pair):
         """
         https://bybit-exchange.github.io/docs/v5/market/tickers
@@ -102,26 +127,6 @@ class StockBybit(IStock):
         for coin in wb["result"]["list"][0]["coin"]:
             if coin["coin"] == "USDT":
                 return float(coin["walletBalance"])
-
-    def get_timedelta_utc_minus_server(self, verbose=False) -> datetime.timedelta:
-        log = logging.getLogger()
-        if not self._timedelta_utc_minus_server:
-            resp = self.http.get_server_time()
-            t_server = utils.ts_to_datetime(resp["time"])
-            t_now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-            td = t_now_utc - t_server
-            if verbose:
-                log.info(f"resp:")
-                log.info(json.dumps(resp, indent=4))
-                log.info(f"t_now_utc: {utils.datetime_to_text(t_now_utc)}")
-                log.info(f"t_server: {utils.datetime_to_text(t_server)}")
-            self._timedelta_utc_minus_server = td
-        else:
-            if verbose:
-                log.info(f"already calculated, get from memory")
-        if verbose:
-            log.info(f"timedelta_utc_minus_server: {self._timedelta_utc_minus_server}")
-        return self._timedelta_utc_minus_server
 
     def get_funding_rate(self, pair, verbose=False):
         ticker_obj = self.get_ticker(pair=pair)
@@ -549,12 +554,11 @@ class StockBybit(IStock):
         if end_utc:
             end_dt_utc = utils.datetime_text_to_datetime(end_utc)
         else:
-            end_dt_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            end_dt_utc = utils.datetime_now()
 
         # convert from UTC to server time
-        timedelta_utc_minus_server = self.get_timedelta_utc_minus_server()
-        start_dt = (start_dt_utc - timedelta_utc_minus_server).replace(microsecond=0)
-        end_dt = (end_dt_utc - timedelta_utc_minus_server).replace(microsecond=0)
+        start_dt = self.datetime_from_UTC_to_server_time(start_dt_utc)
+        end_dt = self.datetime_from_UTC_to_server_time(end_dt_utc)
 
         if verbose:
             log.info(f" start_utc: {utils.datetime_to_text(start_dt_utc)}")
@@ -567,13 +571,13 @@ class StockBybit(IStock):
                 "category": "linear",
                 "symbol": pair,
                 "interval": interval,
-                "start": utils.datetime_to_ts(start_dt),
+                "start": utils.datetime_to_ts(start_dt), # ByBit API is waiting for the server time
                 "limit": limit
             }
             if end_utc:
-                kargs["end"] = utils.datetime_to_ts(end_dt)
+                kargs["end"] = utils.datetime_to_ts(end_dt) # ByBit API is waiting for the server time
 
-            # Attention! API rate limit is considered in bybit api
+            # Attention! API rate limit is calculating in ByBit api
             resp = self.http.get_kline(**kargs)
             if not resp["result"]["list"]:
                 break
@@ -584,7 +588,8 @@ class StockBybit(IStock):
             for candle in resp["result"]["list"]:
                 response = Candle()
 
-                response.Time = utils.ts_to_datetime(candle[0])
+                # need to convert time to UTC for usage/storing
+                response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(candle[0]))
                 response.Id = response.Time
                 response.Open = candle[1]
                 response.High = candle[2]

@@ -55,7 +55,7 @@ def main():
             os.remove(db_filepath)
         dc = data_collector.DataCollector(stock, db_filepath)
         dc.collect_history_candles(pair=pair, interval="5",
-                                   start_utc='01.12.2024 19:00:00,00',
+                                   start_utc='31.01.2025 19:00:00,00',
                                    end_utc=None,
                                    recreate=True)
 

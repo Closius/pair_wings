@@ -81,6 +81,14 @@ def datetime_to_text(dt: datetime):
     return dt.strftime(DATA_FORMAT)
 
 
+def datetime_now():
+    """
+    return current UTC time without timezone, not microseconds
+    :return:
+    """
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).replace(microsecond=0)
+
+
 class Singleton(type):
     """
     Metaclass for creating a singleton class: preserve 1 singleton object in 1 thread
