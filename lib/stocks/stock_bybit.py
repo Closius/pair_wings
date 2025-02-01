@@ -75,19 +75,19 @@ class StockBybit(IStock):
 
     def datetime_from_UTC_to_server_time(self, utc_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone, no microseconds
+            No timezone
 
             :return datetime.datetime on server
         """
-        return (utc_time - self._timedelta_utc_now_minus_server).replace(microsecond=0)
+        return (utc_time - self._timedelta_utc_now_minus_server)
 
     def datetime_from_server_time_to_UTC(self, server_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone, no microseconds
+            No timezone
 
             :return datetime.datetime UTC
         """
-        return (server_time + self._timedelta_utc_now_minus_server).replace(microsecond=0)
+        return (server_time + self._timedelta_utc_now_minus_server)
 
     def _amount_money_to_qty(self, amount_money, pair):
         """
@@ -143,7 +143,7 @@ class StockBybit(IStock):
             )
 
             r = InstrumentInfo()
-            r.Id = utils.ts_to_datetime(instr_info["time"])
+            r.Id = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(instr_info["time"]))
             r.MaxLeverage = float(instr_info["result"]["list"][0]["leverageFilter"]["maxLeverage"])
             r.PriceScale = int(instr_info["result"]["list"][0]["priceScale"])
             min_qty_raw_str = instr_info["result"]["list"][0]["lotSizeFilter"]["minOrderQty"]
@@ -615,7 +615,7 @@ class StockBybit(IStock):
                                                 symbol=pair)
 
         response = Ticker()
-        response.Time = utils.ts_to_datetime(message["time"])
+        response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(message["time"]))
         response.Id = response.Time
         message = message["result"]["list"][0]
         response.MarkPrice = float(message["markPrice"])
@@ -652,11 +652,11 @@ class StockBybit(IStock):
             # log.info(json.dumps(data, indent=4))
 
         response = Position()
-        response.Time = utils.ts_to_datetime(data["updatedTime"])
+        response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["updatedTime"]))
         response.Id = response.Time
         response.Pair = pair
-        response.CreatedTime = utils.ts_to_datetime(data["createdTime"])
-        response.UpdatedTime = utils.ts_to_datetime(data["updatedTime"])
+        response.CreatedTime = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["createdTime"]))
+        response.UpdatedTime = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["updatedTime"]))
         response.Side = "SHORT" if data["side"] == "Sell" else "LONG"
         response.Size = float(data["size"])
         response.AvgPrice = float(data["avgPrice"]) # self.formula_AEP(entry_qty_price_list=)
@@ -708,10 +708,10 @@ class StockBybit(IStock):
                 data = message["data"][0]
                 response = CandleTicker()
 
-                response.Time = utils.ts_to_datetime(data["timestamp"])
+                response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["timestamp"]))
                 response.Id = response.Time
-                response.Start = utils.ts_to_datetime(data["start"])
-                response.End = utils.ts_to_datetime(data["end"])
+                response.Start = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["start"]))
+                response.End = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["end"]))
                 response.Open = data["open"]
                 response.High = data["high"]
                 response.Low = data["low"]
@@ -740,7 +740,7 @@ class StockBybit(IStock):
                 data["ts"] = message["ts"]
                 response = Ticker()
 
-                response.Time = utils.ts_to_datetime(data["ts"])
+                response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["ts"]))
                 response.Id = response.Time
                 response.MarkPrice = data["markPrice"]
                 response.Ask1Size = data["ask1Size"]
@@ -795,7 +795,7 @@ class StockBybit(IStock):
                 is_snapshot = True if message["type"] == "snapshot" else False
 
                 response = OrderBook()
-                response.Time = utils.ts_to_datetime(message["ts"])
+                response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(message["ts"]))
                 response.Id = response.Time
 
                 handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"]["a"],
@@ -833,11 +833,11 @@ class StockBybit(IStock):
                 responses = []
                 for data in message["data"]:
                     response = Position()
-                    response.Time = utils.ts_to_datetime(data["updatedTime"])
+                    response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["updatedTime"]))
                     response.Id = response.Time
                     response.Pair = data["symbol"]
-                    response.CreatedTime = utils.ts_to_datetime(data["createdTime"])
-                    response.UpdatedTime = utils.ts_to_datetime(data["updatedTime"])
+                    response.CreatedTime = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["createdTime"]))
+                    response.UpdatedTime = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["updatedTime"]))
                     response.Side = "SHORT" if data["side"] == "Sell" else "LONG"
                     response.Size = float(data["size"])
                     response.AvgPrice = float(

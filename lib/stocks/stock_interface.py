@@ -79,7 +79,7 @@ class IStock:
 
     def datetime_from_UTC_to_server_time(self, utc_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone, no microseconds
+            No timezone
 
             :return datetime.datetime on server
         """
@@ -87,7 +87,7 @@ class IStock:
 
     def datetime_from_server_time_to_UTC(self, server_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone, no microseconds
+            No timezone
 
             :return datetime.datetime UTC
         """
