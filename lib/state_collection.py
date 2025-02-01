@@ -53,6 +53,16 @@ class State(SchemaAll):
             self._dataframes[k] = self._dataframes[k].drop(index=[0])
 
     def append_single_snapshot(self, **kwargs):
+        """
+        Append a new state
+
+            Usage:
+                tk2 = stock.get_ticker(pair)
+                state.append_single_snapshot(ticker=tk2)
+                
+        :param kwargs: available properties in SchemaAll.__init__()
+        :return:
+        """
         for field_name in SchemaAll().__dict__.keys():
             field_obj = SchemaAll().__dict__[field_name] if field_name not in kwargs else kwargs[field_name]
             if field_name not in self.__dict__.keys():

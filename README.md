@@ -34,7 +34,8 @@ Roadmap
 -------
 
 1. Finish the implementation of ByBit backend which allows to finish implementations of the data maps.
-   1. Problem timezone: server time != UTC. Maybe store and operate everything with UTC? 
+   1. next TODO: think about: remember last N (by datetime duration?) States (lib/state_collection.py)
+   2. next TODO: implement State get state by datetime or get range (lib/state_collection.py)
 2. Use python.decimal.Decimal instead of float for money related values
 3. Check TODO in the code
 3. Write a simple MA strategy.
