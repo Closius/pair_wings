@@ -36,19 +36,21 @@ Roadmap
 1. Finish the implementation of ByBit backend which allows to finish implementations of the data maps.
    1. next TODO: think about: remember last N (by datetime duration?) States (lib/state_collection.py)
    2. next TODO: implement State get state by datetime or get range (lib/state_collection.py)
-2. Use python.decimal.Decimal instead of float for money related values
-3. Check TODO in the code
-3. Write a simple MA strategy.
-4. Implement the stock exchange based on the data from the local SQL database
-5. Develop the Strategy runner. Test on the local SQL database
-6. Write pytest. Add CI
-7. Add to PyPi index
-8. The documentation
+2. GUI
+3. Use python.decimal.Decimal instead of float for money related values
+4. Check TODO in the code
+5. Write a simple MA strategy.
+6. Implement the stock exchange based on the data from the local SQL database
+7. Develop the Strategy runner. Test on the local SQL database
+8. Write pytest. Add CI
+9. Add to PyPi index
+10. The documentation
 
 Open questions: 
 
 1. Should I use SqlAlchemy ORM ?
 2. Should I try https://github.com/ccxt/ccxt ?  
+3. TradingView plots in Python https://github.com/louisnw01/lightweight-charts-python or https://github.com/domarm-comat/pglive?tab=readme-ov-file
 
 Prerequisites
 -------------
