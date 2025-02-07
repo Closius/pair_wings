@@ -1,4 +1,4 @@
-from lib.strategies.strategy_intefrace import IStrategy
+from lib.backend.strategies.strategy_intefrace import IStrategy
 
 
 class Strategy_A_Test(IStrategy):

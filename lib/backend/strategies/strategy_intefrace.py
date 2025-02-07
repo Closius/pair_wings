@@ -2,7 +2,7 @@ import queue
 
 import pandas as pd
 
-from lib.stocks.stock_interface import IStock, StockNotification
+from lib.backend.stocks.stock_interface import IStock, StockNotification
 
 
 class IStrategy:

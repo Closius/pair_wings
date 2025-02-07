@@ -1,6 +1,6 @@
-from lib.stocks.stock_interface import IStock
+from lib.backend.stocks.stock_interface import IStock
 
-from lib.database import DB
+from lib.backend.database import DB
 
 
 class StockTestDB(IStock):

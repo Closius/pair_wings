@@ -1,68 +1,72 @@
 import datetime
-import json
 import logging
 import time
 
-import json5
 import numpy as np
 
 from pybit.unified_trading import WebSocket
 from pybit.unified_trading import HTTP
 
-from lib.stocks.stock_interface import IStock, atomic_in_threads
-from lib import utils
+from lib.backend.stocks.stock_interface import IStock, atomic_in_threads
+from lib.backend import utils
 
-from lib.schema import (Ticker, Candle, CandleTicker, OrderBook, Position,
-                        InstrumentInfo)
+from lib.backend.schema import (
+    Ticker,
+    Candle,
+    CandleTicker,
+    OrderBook,
+    Position,
+    InstrumentInfo,
+)
 
 
 class StockBybit(IStock):
     """
-        Note: Rate limit is implemented inside `pybit`
-            https://bybit-exchange.github.io/docs/v5/rate-limit
+    Note: Rate limit is implemented inside `pybit`
+        https://bybit-exchange.github.io/docs/v5/rate-limit
     """
 
     CROSS_MARGIN = True
 
-    def __init__(self, account_name=None, api_secrets_file=None, settings_file=None, demo=True):
+    def __init__(self, account_name=None, api_key=None, api_secret=None, demo=True):
         super().__init__()
         self.log_stock = logging.getLogger()
         self.log_stock.info(f"Connecting to public Bybit ...")
         self.demo = demo
         self.http = HTTP(demo=True)
         self.http_private = None
+        self.ws_private = None
         self.ws = WebSocket(
             testnet=True,  # testnet gives wrong values! at least on HTTP
-            channel_type="linear"
+            channel_type="linear",
         )
 
         if account_name:
             self.log_stock.info(f"Connecting to private Bybit: {account_name} ...")
 
-            with open(api_secrets_file) as f:
-                api_secrets = json5.load(f)
-            with open(settings_file) as f:
-                settings = json5.load(f)
-
-            # self.log_stock.info("Current settings:")
-            # self.log_stock.info(json5.dumps(settings, indent=4))
-
             # You can create an authenticated or unauthenticated HTTP session.
             # You can skip authentication by not passing any value for the key and secret.
             self.http_private = HTTP(
-                api_key=api_secrets["accounts"][account_name]["API_KEY"],
-                api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
-                demo=demo,
-                recv_window=20000
+                api_key=api_key,
+                api_secret=api_secret,
+                demo=self.demo,
+                recv_window=20000,
             )
 
             self.ws_private = WebSocket(
-                demo=demo,
+                demo=self.demo,
                 testnet=False,
                 channel_type="private",
-                api_key=api_secrets["accounts"][account_name]["API_KEY"],
-                api_secret=api_secrets["accounts"][account_name]["API_SECRET"],
+                api_key=api_key,
+                api_secret=api_secret,
             )
+
+    def disconnect(self):
+        # Known issue https://github.com/bybit-exchange/pybit/pull/253
+        # websocket._exceptions.WebSocketConnectionClosedException: Connection is already closed.
+        if self.ws_private:
+            self.ws_private.exit()
+        self.ws.exit()
 
     @property
     def _timedelta_utc_now_minus_server(self) -> datetime.timedelta:
@@ -75,19 +79,19 @@ class StockBybit(IStock):
 
     def datetime_from_UTC_to_server_time(self, utc_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone
+        No timezone
 
-            :return datetime.datetime on server
+        :return datetime.datetime on server
         """
-        return (utc_time - self._timedelta_utc_now_minus_server)
+        return utc_time - self._timedelta_utc_now_minus_server
 
     def datetime_from_server_time_to_UTC(self, server_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone
+        No timezone
 
-            :return datetime.datetime UTC
+        :return datetime.datetime UTC
         """
-        return (server_time + self._timedelta_utc_now_minus_server)
+        return server_time + self._timedelta_utc_now_minus_server
 
     def _amount_money_to_qty(self, amount_money, pair):
         """
@@ -114,7 +118,10 @@ class StockBybit(IStock):
         else:
             min_in_money = inst_info.MinOrderQty * mp
         min_in_qty = min_in_money / mp
-        r = {"qty": round(min_in_qty, inst_info.QtyScale), "money": round(min_in_money, inst_info.PriceScale)}
+        r = {
+            "qty": round(min_in_qty, inst_info.QtyScale),
+            "money": round(min_in_money, inst_info.PriceScale),
+        }
         if verbose:
             log.info(f"\tmarkPrice current: {mp}")
             log.info(f"\tqty: {r['qty']}")
@@ -189,8 +196,10 @@ class StockBybit(IStock):
     def open_modify_SHORT_LONG(self, side, pair, amount_money_add=None, stopLoss=None, takeProfit=None):
         log = logging.getLogger(pair)
         if amount_money_add and amount_money_add <= 0:
-            raise ValueError("amount_money must be > 0. HINT: To close the position use "
-                             "close_SHORT_LONG() or open the opposite position")
+            raise ValueError(
+                "amount_money must be > 0. HINT: To close the position use "
+                "close_SHORT_LONG() or open the opposite position"
+            )
         pos_info = self.get_position_status(pair=pair)
         qty = self._amount_money_to_qty(amount_money_add, pair)
         # log.info(json5.dumps(pos_info, indent=4))
@@ -208,7 +217,10 @@ class StockBybit(IStock):
                     w_msg.append(f"takeProfit={takeProfit}")
             if len(w_msg) == 0:
                 raise ValueError("Nothing to do")
-            msg = f"Modifying to {side} position (~{pos_info.Size * pos_info.MarkPrice_} money (qty: {qty})) on {pair}: " + ", ".join(w_msg)
+            msg = (
+                f"Modifying to {side} position (~{pos_info.Size * pos_info.MarkPrice_} money (qty: {qty})) on {pair}: "
+                + ", ".join(w_msg)
+            )
 
         log.info(msg)
 
@@ -234,7 +246,7 @@ class StockBybit(IStock):
             "timeInForce": "IOC",
             "tpTriggerBy": "LastPrice",
             "slTriggerBy": "LastPrice",
-            "tpslMode": "Full"
+            "tpslMode": "Full",
         }
         if stopLoss:
             kwrgs["stopLoss"] = stopLoss
@@ -242,7 +254,7 @@ class StockBybit(IStock):
             kwrgs["takeProfit"] = takeProfit
 
         # Place an order on that USDT Perpetual
-        orderId = self.http_private.place_order(**kwrgs)['result']['orderId']
+        orderId = self.http_private.place_order(**kwrgs)["result"]["orderId"]
 
         log.info(f"<< Completed >>. {msg}")
 
@@ -283,8 +295,8 @@ class StockBybit(IStock):
             # https://www.bybit.com/en/help-center/article/What-Are-Time-In-Force-TIF-GTC-IOC-FOK
             timeInForce="GTC",
             reduceOnly=True,
-            closeOnTrigger=False
-        )['result']['orderId']
+            closeOnTrigger=False,
+        )["result"]["orderId"]
 
         current_order_size = None
         while (original_position_size - size_coins_to_close) != current_order_size:
@@ -330,8 +342,18 @@ class StockBybit(IStock):
             total_quantity_contracts += q
         return total_contract_value_in_usdt / total_quantity_contracts
 
-    def formula_profit_loss(self, pair, side, average_entry_price_usdt, last_traded_price, qty,
-                            margin_leverage_pair, margin_leverage_pair_max, funding_rate, verbose=False):
+    def formula_profit_loss(
+        self,
+        pair,
+        side,
+        average_entry_price_usdt,
+        last_traded_price,
+        qty,
+        margin_leverage_pair,
+        margin_leverage_pair_max,
+        funding_rate,
+        verbose=False,
+    ):
         """
         Calculate the profit/losses (what you get in wallet) from the closing order by market
 
@@ -339,7 +361,6 @@ class StockBybit(IStock):
 
         :return:
         """
-
 
         """
             https://medium.com/derivadex/liquidation-and-bankruptcy-prices-under-the-hood-c93167950d6a
@@ -388,7 +409,9 @@ class StockBybit(IStock):
 
         if verbose:
             log.info(f"[formula] \tcollateral (init margin): {collateral}")
-            log.info(f"[formula] \tcollateral (init margin) based on max leverage: {(qty * entry_price_usdt) / margin_leverage_pair_max}")
+            log.info(
+                f"[formula] \tcollateral (init margin) based on max leverage: {(qty * entry_price_usdt) / margin_leverage_pair_max}"
+            )
             # log.info(f"[formula] \ttotal_account_value: {total_account_value}")
             # log.info(f"[formula] \tbankruptcy_price_common_calc: {bankruptcy_price_common_calc}")
             log.info(f"[formula] \tbankruptcy_price: {bankruptcy_price}")
@@ -527,17 +550,31 @@ class StockBybit(IStock):
             log.info(f"[formula] \tfee_to_close: {fee_to_close}")
             log.info(f"[formula] \tclosed_pl_usdt: {closed_pl_usdt}")
 
-        return {"Unrealized_PL_Money": unrealized_pl_usdt,
-                "ROI_percent": ROI_or_unrealized_pl_percent,
-                "Closed_PL_Money": closed_pl_usdt}
+        return {
+            "Unrealized_PL_Money": unrealized_pl_usdt,
+            "ROI_percent": ROI_or_unrealized_pl_percent,
+            "Closed_PL_Money": closed_pl_usdt,
+        }
 
-    def get_history_tohlcv(self, pair, interval, start_utc: str,
-                           end_utc: str = None, verbose=False):
+    def get_history_tohlcv(self, pair, interval, start_utc: str, end_utc: str = None, verbose=False):
         """
-            start_utc, end_utc - datetime in UTC  format: lib/utils.py  DATA_FORMAT
+        start_utc, end_utc - datetime in UTC  format: lib/utils.py  DATA_FORMAT
         """
         log = logging.getLogger(pair)
-        allowed_intervals = ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W"]
+        allowed_intervals = [
+            "1",
+            "3",
+            "5",
+            "15",
+            "30",
+            "60",
+            "120",
+            "240",
+            "360",
+            "720",
+            "D",
+            "W",
+        ]
         if interval not in allowed_intervals:
             raise ValueError(f"Wrong interval '{interval}'. Allowed intervals {allowed_intervals}")
 
@@ -571,11 +608,11 @@ class StockBybit(IStock):
                 "category": "linear",
                 "symbol": pair,
                 "interval": interval,
-                "start": utils.datetime_to_ts(start_dt), # ByBit API is waiting for the server time
-                "limit": limit
+                "start": utils.datetime_to_ts(start_dt),  # ByBit API is waiting for the server time
+                "limit": limit,
             }
             if end_utc:
-                kargs["end"] = utils.datetime_to_ts(end_dt) # ByBit API is waiting for the server time
+                kargs["end"] = utils.datetime_to_ts(end_dt)  # ByBit API is waiting for the server time
 
             # Attention! API rate limit is calculating in ByBit api
             resp = self.http.get_kline(**kargs)
@@ -611,8 +648,7 @@ class StockBybit(IStock):
             yield c
 
     def get_ticker(self, pair):
-        message = self.http_private.get_tickers(category="linear",
-                                                symbol=pair)
+        message = self.http_private.get_tickers(category="linear", symbol=pair)
 
         response = Ticker()
         response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(message["time"]))
@@ -659,7 +695,7 @@ class StockBybit(IStock):
         response.UpdatedTime = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["updatedTime"]))
         response.Side = "SHORT" if data["side"] == "Sell" else "LONG"
         response.Size = float(data["size"])
-        response.AvgPrice = float(data["avgPrice"]) # self.formula_AEP(entry_qty_price_list=)
+        response.AvgPrice = float(data["avgPrice"])  # self.formula_AEP(entry_qty_price_list=)
         response.Leverage = float(data["leverage"])
         response.MarkPrice_ = float(data["markPrice"])
         response.StopLoss = None if data["stopLoss"] == "" else float(data["stopLoss"])
@@ -667,15 +703,17 @@ class StockBybit(IStock):
 
         instrument_info_obj = self.get_instrument_info(pair=pair)
 
-        pl_dict = self.formula_profit_loss(pair=pair,
-                                           side=response.Side,
-                                           average_entry_price_usdt=response.AvgPrice,
-                                           last_traded_price=response.MarkPrice_,
-                                           qty=response.Size,
-                                           margin_leverage_pair=response.Leverage,
-                                           margin_leverage_pair_max=instrument_info_obj.MaxLeverage,
-                                           funding_rate=self.get_funding_rate(pair=pair),
-                                           verbose=verbose)
+        pl_dict = self.formula_profit_loss(
+            pair=pair,
+            side=response.Side,
+            average_entry_price_usdt=response.AvgPrice,
+            last_traded_price=response.MarkPrice_,
+            qty=response.Size,
+            margin_leverage_pair=response.Leverage,
+            margin_leverage_pair_max=instrument_info_obj.MaxLeverage,
+            funding_rate=self.get_funding_rate(pair=pair),
+            verbose=verbose,
+        )
 
         response.Unrealized_PL_Money = pl_dict["Unrealized_PL_Money"]
         response.ROI_percent = pl_dict["ROI_percent"]
@@ -733,6 +771,7 @@ class StockBybit(IStock):
     @IStock.stream_decorator
     def stream_ticker(self, handler, handler_kwargs, stop_event, pair):
         log = logging.getLogger(pair)
+
         def handle_ticker(message):
             # reformat
             try:
@@ -763,7 +802,7 @@ class StockBybit(IStock):
     @IStock.stream_decorator
     def stream_order_book(self, handler, handler_kwargs, stop_event, pair):
         """
-            https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
+        https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
         """
 
         log = logging.getLogger(pair)
@@ -798,21 +837,25 @@ class StockBybit(IStock):
                 response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(message["ts"]))
                 response.Id = response.Time
 
-                handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"]["a"],
-                                                                         is_snapshot=is_snapshot,
-                                                                         big_snapshot=handle_ticker.asks_d_snapshot)
+                handle_ticker.asks_d_snapshot = asks_bids_delta_snapshot(
+                    raw_data=message["data"]["a"],
+                    is_snapshot=is_snapshot,
+                    big_snapshot=handle_ticker.asks_d_snapshot,
+                )
                 if handle_ticker.asks_d_snapshot is None:
                     return
                 else:
-                    response.Asks = np.array([[p,v] for p,v in handle_ticker.asks_d_snapshot.items()])
+                    response.Asks = np.array([[p, v] for p, v in handle_ticker.asks_d_snapshot.items()])
 
-                handle_ticker.bids_d_snapshot = asks_bids_delta_snapshot(raw_data=message["data"]["b"],
-                                                                         is_snapshot=is_snapshot,
-                                                                         big_snapshot=handle_ticker.bids_d_snapshot)
+                handle_ticker.bids_d_snapshot = asks_bids_delta_snapshot(
+                    raw_data=message["data"]["b"],
+                    is_snapshot=is_snapshot,
+                    big_snapshot=handle_ticker.bids_d_snapshot,
+                )
                 if handle_ticker.bids_d_snapshot is None:
                     return
                 else:
-                    response.Bids = np.array([[p,v] for p,v in handle_ticker.bids_d_snapshot.items()])
+                    response.Bids = np.array([[p, v] for p, v in handle_ticker.bids_d_snapshot.items()])
 
                 handler(response, **handler_kwargs)
             except Exception as ex:
@@ -836,32 +879,35 @@ class StockBybit(IStock):
                     response.Time = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["updatedTime"]))
                     response.Id = response.Time
                     response.Pair = data["symbol"]
-                    response.CreatedTime = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["createdTime"]))
-                    response.UpdatedTime = self.datetime_from_server_time_to_UTC(utils.ts_to_datetime(data["updatedTime"]))
+                    response.CreatedTime = self.datetime_from_server_time_to_UTC(
+                        utils.ts_to_datetime(data["createdTime"])
+                    )
+                    response.UpdatedTime = self.datetime_from_server_time_to_UTC(
+                        utils.ts_to_datetime(data["updatedTime"])
+                    )
                     response.Side = "SHORT" if data["side"] == "Sell" else "LONG"
                     response.Size = float(data["size"])
-                    response.AvgPrice = float(
-                        data["entryPrice"])  # self.formula_AEP(entry_qty_price_list=)
+                    response.AvgPrice = float(data["entryPrice"])  # self.formula_AEP(entry_qty_price_list=)
                     response.Leverage = float(data["leverage"])
                     response.MarkPrice_ = float(data["markPrice"])
-                    response.StopLoss = None if data["stopLoss"] == "" else float(
-                        data["stopLoss"])
-                    response.TakeProfit = None if data["takeProfit"] == "" else float(
-                        data["takeProfit"])
+                    response.StopLoss = None if data["stopLoss"] == "" else float(data["stopLoss"])
+                    response.TakeProfit = None if data["takeProfit"] == "" else float(data["takeProfit"])
 
                     instrument_info_obj = self.get_instrument_info(pair=response.Pair)
 
                     if data["size"] != "0":
 
-                        pl_dict = self.formula_profit_loss(pair=response.Pair,
-                                                           side=response.Side,
-                                                           average_entry_price_usdt=response.AvgPrice,
-                                                           last_traded_price=response.MarkPrice_,
-                                                           qty=response.Size,
-                                                           margin_leverage_pair=response.Leverage,
-                                                           margin_leverage_pair_max=instrument_info_obj.MaxLeverage,
-                                                           funding_rate=self.get_funding_rate(pair=response.Pair),
-                                                           verbose=False)
+                        pl_dict = self.formula_profit_loss(
+                            pair=response.Pair,
+                            side=response.Side,
+                            average_entry_price_usdt=response.AvgPrice,
+                            last_traded_price=response.MarkPrice_,
+                            qty=response.Size,
+                            margin_leverage_pair=response.Leverage,
+                            margin_leverage_pair_max=instrument_info_obj.MaxLeverage,
+                            funding_rate=self.get_funding_rate(pair=response.Pair),
+                            verbose=False,
+                        )
 
                         response.Unrealized_PL_Money = pl_dict["Unrealized_PL_Money"]
                         response.ROI_percent = pl_dict["ROI_percent"]

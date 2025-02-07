@@ -59,6 +59,8 @@ Python 3.12
 
 `python.exe -m pip install -r requirements.txt`
 
+qt designer: https://build-system.fman.io/qt-designer-download
+
 Quick start
 -----------
 

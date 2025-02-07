@@ -6,8 +6,8 @@ import seaborn as sns
 
 import pandas as pd
 
-from lib import database
-from lib import utils
+from lib.backend import database, utils
+
 
 def draw_candles(db_filepath, pair):
     log = logging.getLogger(__name__)

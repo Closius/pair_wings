@@ -5,9 +5,9 @@ import io
 
 import pandas as pd
 
-from lib.schema import (
+from lib.backend.schema import (
     SchemaAll, Ticker, Candle, CandleTicker, OrderBook, _NDARRAY_DB_TYPE)
-from lib import utils
+from lib.backend import utils
 
 
 def numpy_to_sqlite(arr):

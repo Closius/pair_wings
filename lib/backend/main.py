@@ -3,13 +3,15 @@ import os.path
 import threading
 import time
 
-from lib import data_show, data_collector, utils, random_trade
+import json5
 
-from lib.stocks.stock_bybit import StockBybit
+from lib.backend import data_collector, data_show, random_trade, utils
+
+from lib.backend.stocks.stock_bybit import StockBybit
 
 
 def main():
-    log = utils.setup_logger("", "pybit.log", level=logging.INFO, stream=True)
+    log = utils.setup_logger("", "../../pybit.log", level=logging.INFO, stream=True)
 
     # pair = "WIFUSDT"
     pair = "BTCUSDT"
@@ -30,11 +32,14 @@ def main():
     log.info("")
     r = input()
     log.info(r)
-    stock = StockBybit(account_name="pair_wings_demo",
-                       api_secrets_file="bybit_api_secret.json",
-                       settings_file="bybit_settings.json")
-    # stock = StockBybit(map=map)
-    db_filepath = "main.db"
+    with open("../../api_secrets.json") as f:
+        api_secrets = json5.load(f)
+    stock = StockBybit(
+        account_name="pair_wings_demo",
+        api_key=api_secrets["stocks"]["bybit"]["accounts"]["pair_wings_demo"]["API_KEY"],
+        api_secret=api_secrets["stocks"]["bybit"]["accounts"]["pair_wings_demo"]["API_SECRET"],
+    )
+    db_filepath = "../../main.db"
     event = threading.Event()
     if r == "1":
         if os.path.exists(db_filepath):
@@ -54,10 +59,9 @@ def main():
         if os.path.exists(db_filepath):
             os.remove(db_filepath)
         dc = data_collector.DataCollector(stock, db_filepath)
-        dc.collect_history_candles(pair=pair, interval="5",
-                                   start_utc='31.01.2025 19:00:00,00',
-                                   end_utc=None,
-                                   recreate=True)
+        dc.collect_history_candles(
+            pair=pair, interval="5", start_utc="06.02.2025 19:00:00,00", end_utc=None, recreate=True
+        )
 
     elif r == "3":
         data_show.draw_candles(db_filepath, pair=pair)
@@ -69,20 +73,30 @@ def main():
 
         def handler(message):
             for m in message:
-                log.info(f'position_status {utils.datetime_to_text(m.UpdatedTime)} | '
-                              f'{m.Pair} | {m.Size}' )
+                log.info(f"position_status {utils.datetime_to_text(m.UpdatedTime)} | " f"{m.Pair} | {m.Size}")
 
         stock.stream_position_status(handler=handler, handler_kwargs={}, stop_event=event)
         time.sleep(2)
-        random_trade.open_add_position(stock, pair=pair, side="SHORT", percent_from_deposit=1, qty=0.01,
-                    wait_for_add_second=3, add_qty=0.01)
+        random_trade.open_add_position(
+            stock, pair=pair, side="SHORT", percent_from_deposit=1, qty=0.01, wait_for_add_second=3, add_qty=0.01
+        )
         time.sleep(5)
         r = random_trade.close_position(stock, pair=pair, amount_percent=100, verbose=True)
         event.set()
 
     elif r == "7":
-        pairs = ['ACEUSDT', 'BTCUSDT', 'COREUSDT', 'DASHUSDT', 'EOSUSDT', 'ETHUSDT', 'HMSTRUSDT',
-            'MNTUSDT', 'SOLUSDT', 'MONUSDT'] #, 'WIFUSDT', 'RAREUSDT']
+        pairs = [
+            "ACEUSDT",
+            "BTCUSDT",
+            "COREUSDT",
+            "DASHUSDT",
+            "EOSUSDT",
+            "ETHUSDT",
+            "HMSTRUSDT",
+            "MNTUSDT",
+            "SOLUSDT",
+            "MONUSDT",
+        ]  # , 'WIFUSDT', 'RAREUSDT']
         pairs = stock.get_all_pairs()
 
         # pairs = ['BTCUSDT']
@@ -91,7 +105,8 @@ def main():
         pairs_USDT_only = pairs_USDT_only[:10]  # first N
         random_trade.main(pairs=pairs_USDT_only, stock=stock, num_steps=10)
     elif r == "8":
-        from lib.state_collection import State
+        from lib.backend.state_collection import State
+
         tk1 = stock.get_ticker(pair)
         tk1.FundingRate = None
         time.sleep(2)
@@ -103,17 +118,18 @@ def main():
         st.append_single_snapshot(ticker=tk2)
 
         log.info("ticker:")
-        st._dataframes['ticker'].info()
+        st._dataframes["ticker"].info()
         log.info("position:")
-        st._dataframes['position'].info()
+        st._dataframes["position"].info()
         log.info("order_book:")
-        st._dataframes['order_book'].info()
+        st._dataframes["order_book"].info()
 
         for k in st._dataframes.keys():
             st._dataframes[k] = st._dataframes[k].drop(index=[0])
 
         log.info("order_book:")
-        st._dataframes['order_book'].info()
+        st._dataframes["order_book"].info()
+
 
 if __name__ == "__main__":
     main()

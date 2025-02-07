@@ -1,7 +1,6 @@
 import json
 import os
 import time
-import queue
 import random
 import statistics
 import logging
@@ -14,7 +13,7 @@ plt.style.use('ggplot')
 
 import numpy as np
 
-from lib import utils
+from lib.backend import utils
 
 
 def open_add_position(stock, pair, side, percent_from_deposit=1.0, qty=0.01, wait_for_add_second=None, add_qty=0.01):
@@ -54,7 +53,7 @@ def close_position(stock, pair, amount_percent=100, verbose=False):
     else:
         raise ValueError("Position not exist. Maybe closed?")
     error_percent = round(utils.error_percent(experiment=earn_net,
-                                      theory=position.Closed_PL_Money), 2)
+                                              theory=position.Closed_PL_Money), 2)
     log.info(f"Error calculated PL and Earned netto: {error_percent} %")
 
     return {"earn_net": earn_net,

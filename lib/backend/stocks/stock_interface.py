@@ -6,8 +6,8 @@ from typing import List
 
 from concurrent.futures import ThreadPoolExecutor
 
-from lib.schema import (Ticker, Candle, Position, InstrumentInfo)
-from lib.rwlock import RWLock
+from lib.backend.schema import (Ticker, Candle, Position, InstrumentInfo)
+from lib.backend.rwlock import RWLock
 
 
 def atomic_in_threads(rwlock: RWLock, side):

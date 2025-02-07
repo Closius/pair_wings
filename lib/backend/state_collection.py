@@ -38,7 +38,7 @@
 
 import pandas as pd
 
-from lib.schema import SchemaAll
+from lib.backend.schema import SchemaAll
 
 
 class State(SchemaAll):

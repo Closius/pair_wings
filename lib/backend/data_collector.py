@@ -1,11 +1,10 @@
 import logging
 
-from lib import utils
-from lib import database
+from lib.backend import database, utils
 
-from lib.stocks.stock_interface import IStock
+from lib.backend.stocks.stock_interface import IStock
 
-from lib.schema import Ticker, CandleTicker, OrderBook
+from lib.backend.schema import Ticker, CandleTicker, OrderBook
 
 
 class DataCollector:
