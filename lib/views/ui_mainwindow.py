@@ -16,9 +16,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
-    QLabel, QListView, QMainWindow, QMenuBar,
-    QPushButton, QSizePolicy, QSpacerItem, QStatusBar,
-    QTabWidget, QWidget)
+    QLabel, QListWidget, QListWidgetItem, QMainWindow,
+    QMenuBar, QPushButton, QSizePolicy, QSpacerItem,
+    QStatusBar, QTabWidget, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -29,24 +29,6 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout = QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName(u"gridLayout")
-        self.tradingView_tabWidget = QTabWidget(self.centralwidget)
-        self.tradingView_tabWidget.setObjectName(u"tradingView_tabWidget")
-        self.tradingView_tab = QWidget()
-        self.tradingView_tab.setObjectName(u"tradingView_tab")
-        self.gridLayout_4 = QGridLayout(self.tradingView_tab)
-        self.gridLayout_4.setObjectName(u"gridLayout_4")
-        self.tradingView_gridLayout = QGridLayout()
-        self.tradingView_gridLayout.setObjectName(u"tradingView_gridLayout")
-
-        self.gridLayout_4.addLayout(self.tradingView_gridLayout, 0, 0, 1, 1)
-
-        self.tradingView_tabWidget.addTab(self.tradingView_tab, "")
-        self.tab_2 = QWidget()
-        self.tab_2.setObjectName(u"tab_2")
-        self.tradingView_tabWidget.addTab(self.tab_2, "")
-
-        self.gridLayout.addWidget(self.tradingView_tabWidget, 0, 1, 1, 1)
-
         self.tabWidget_2 = QTabWidget(self.centralwidget)
         self.tabWidget_2.setObjectName(u"tabWidget_2")
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -68,40 +50,35 @@ class Ui_MainWindow(object):
 
         self.gridLayout_2.addWidget(self.draw_pushButton, 3, 0, 1, 1)
 
-        self.pairs_listView = QListView(self.tab_3)
-        self.pairs_listView.setObjectName(u"pairs_listView")
+        self.interval_comboBox = QComboBox(self.tab_3)
+        self.interval_comboBox.setObjectName(u"interval_comboBox")
 
-        self.gridLayout_2.addWidget(self.pairs_listView, 1, 1, 1, 1)
+        self.gridLayout_2.addWidget(self.interval_comboBox, 2, 2, 1, 1)
 
         self.label = QLabel(self.tab_3)
         self.label.setObjectName(u"label")
 
         self.gridLayout_2.addWidget(self.label, 1, 0, 1, 1)
 
-        self.interval_comboBox = QComboBox(self.tab_3)
-        self.interval_comboBox.setObjectName(u"interval_comboBox")
+        self.pairs_listWidget = QListWidget(self.tab_3)
+        self.pairs_listWidget.setObjectName(u"pairs_listWidget")
 
-        self.gridLayout_2.addWidget(self.interval_comboBox, 2, 1, 1, 1)
+        self.gridLayout_2.addWidget(self.pairs_listWidget, 1, 2, 1, 1)
 
         self.tabWidget_2.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
         self.tab_4.setObjectName(u"tab_4")
         self.gridLayout_3 = QGridLayout(self.tab_4)
         self.gridLayout_3.setObjectName(u"gridLayout_3")
-        self.stockConnect_pushButton = QPushButton(self.tab_4)
-        self.stockConnect_pushButton.setObjectName(u"stockConnect_pushButton")
+        self.stockNames_comboBox = QComboBox(self.tab_4)
+        self.stockNames_comboBox.setObjectName(u"stockNames_comboBox")
 
-        self.gridLayout_3.addWidget(self.stockConnect_pushButton, 4, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.stockNames_comboBox, 0, 1, 1, 1)
 
         self.accountNames_comboBox = QComboBox(self.tab_4)
         self.accountNames_comboBox.setObjectName(u"accountNames_comboBox")
 
         self.gridLayout_3.addWidget(self.accountNames_comboBox, 1, 1, 1, 1)
-
-        self.stockNames_comboBox = QComboBox(self.tab_4)
-        self.stockNames_comboBox.setObjectName(u"stockNames_comboBox")
-
-        self.gridLayout_3.addWidget(self.stockNames_comboBox, 0, 1, 1, 1)
 
         self.label_3 = QLabel(self.tab_4)
         self.label_3.setObjectName(u"label_3")
@@ -113,28 +90,43 @@ class Ui_MainWindow(object):
 
         self.gridLayout_3.addWidget(self.label_4, 1, 0, 1, 1)
 
-        self.stockAutoConnect_checkBox = QCheckBox(self.tab_4)
-        self.stockAutoConnect_checkBox.setObjectName(u"stockAutoConnect_checkBox")
+        self.stockConnect_pushButton = QPushButton(self.tab_4)
+        self.stockConnect_pushButton.setObjectName(u"stockConnect_pushButton")
 
-        self.gridLayout_3.addWidget(self.stockAutoConnect_checkBox, 2, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.stockConnect_pushButton, 4, 0, 1, 2)
 
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.gridLayout_3.addItem(self.verticalSpacer, 5, 0, 1, 1)
 
-        self.stockDisconnect_pushButton = QPushButton(self.tab_4)
-        self.stockDisconnect_pushButton.setObjectName(u"stockDisconnect_pushButton")
+        self.stockAutoConnect_checkBox = QCheckBox(self.tab_4)
+        self.stockAutoConnect_checkBox.setObjectName(u"stockAutoConnect_checkBox")
 
-        self.gridLayout_3.addWidget(self.stockDisconnect_pushButton, 4, 1, 1, 1)
+        self.gridLayout_3.addWidget(self.stockAutoConnect_checkBox, 2, 0, 1, 1)
 
-        self.stockStatus_label = QLabel(self.tab_4)
-        self.stockStatus_label.setObjectName(u"stockStatus_label")
+        self.stock_status_label = QLabel(self.tab_4)
+        self.stock_status_label.setObjectName(u"stock_status_label")
 
-        self.gridLayout_3.addWidget(self.stockStatus_label, 3, 0, 1, 2)
+        self.gridLayout_3.addWidget(self.stock_status_label, 3, 0, 1, 1)
 
         self.tabWidget_2.addTab(self.tab_4, "")
 
         self.gridLayout.addWidget(self.tabWidget_2, 0, 0, 1, 1)
+
+        self.tradingView_tabWidget = QTabWidget(self.centralwidget)
+        self.tradingView_tabWidget.setObjectName(u"tradingView_tabWidget")
+        self.tradingView_tab = QWidget()
+        self.tradingView_tab.setObjectName(u"tradingView_tab")
+        self.gridLayout_4 = QGridLayout(self.tradingView_tab)
+        self.gridLayout_4.setObjectName(u"gridLayout_4")
+        self.tradingView_gridLayout = QGridLayout()
+        self.tradingView_gridLayout.setObjectName(u"tradingView_gridLayout")
+
+        self.gridLayout_4.addLayout(self.tradingView_gridLayout, 0, 0, 1, 1)
+
+        self.tradingView_tabWidget.addTab(self.tradingView_tab, "")
+
+        self.gridLayout.addWidget(self.tradingView_tabWidget, 0, 1, 1, 1)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
@@ -147,8 +139,8 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
+        self.tabWidget_2.setCurrentIndex(0)
         self.tradingView_tabWidget.setCurrentIndex(0)
-        self.tabWidget_2.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -156,18 +148,16 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"Pair Wings", None))
-        self.tradingView_tabWidget.setTabText(self.tradingView_tabWidget.indexOf(self.tradingView_tab), QCoreApplication.translate("MainWindow", u"Trading View", None))
-        self.tradingView_tabWidget.setTabText(self.tradingView_tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Tab 2", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"Interval", None))
         self.draw_pushButton.setText(QCoreApplication.translate("MainWindow", u"Draw", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Pairs", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Trading", None))
-        self.stockConnect_pushButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"Stock", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"Account", None))
-        self.stockAutoConnect_checkBox.setText(QCoreApplication.translate("MainWindow", u"Connect automatically", None))
-        self.stockDisconnect_pushButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
-        self.stockStatus_label.setText(QCoreApplication.translate("MainWindow", u"Status: ", None))
+        self.stockConnect_pushButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
+        self.stockAutoConnect_checkBox.setText(QCoreApplication.translate("MainWindow", u"Connect automatically on start the app", None))
+        self.stock_status_label.setText(QCoreApplication.translate("MainWindow", u"Status: ", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Settings", None))
+        self.tradingView_tabWidget.setTabText(self.tradingView_tabWidget.indexOf(self.tradingView_tab), QCoreApplication.translate("MainWindow", u"Trading View", None))
     # retranslateUi
 

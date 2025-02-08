@@ -6,7 +6,7 @@ from typing import List
 
 from concurrent.futures import ThreadPoolExecutor
 
-from lib.backend.schema import (Ticker, Candle, Position, InstrumentInfo)
+from lib.backend.schema import Ticker, Candle, Position, InstrumentInfo
 from lib.backend.rwlock import RWLock
 
 
@@ -21,6 +21,7 @@ def atomic_in_threads(rwlock: RWLock, side):
     :param side: OBEY/ATOMIC
     :param rwlock: RWLock() object. Should be the same for one group of readers/writers
     """
+
     def inner(func):
         def _decorator(*args, **kwargs):
             try:
@@ -34,17 +35,19 @@ def atomic_in_threads(rwlock: RWLock, side):
                 logging.getLogger().exception(ex)
             else:
                 return response
+
         return functools.wraps(func)(_decorator)
+
     return inner
 
 
 class IStock:
     """
-        Methods return data according to the implementation of SchemaAll (DB names)
+    Methods return data according to the implementation of SchemaAll (DB names)
 
-        Att times must be in UTC, no timezone
+    Att times must be in UTC, no timezone
 
-        only trading on derivatives (futures)!
+    only trading on derivatives (futures)!
     """
 
     GET_FACT_EARN_NET_rwlock = RWLock()
@@ -65,31 +68,36 @@ class IStock:
         def wrapper(self, handler, handler_kwargs, stop_event, **kwargs):
             handler_kwargs = {} if handler_kwargs is None else handler_kwargs
             future = self.thread_pool_executor.submit(
-                func,
-                self=self,
-                handler=handler,
-                handler_kwargs=handler_kwargs,
-                stop_event=stop_event,
-                **kwargs
+                func, self=self, handler=handler, handler_kwargs=handler_kwargs, stop_event=stop_event, **kwargs
             )
 
         return wrapper
 
     stream_decorator = staticmethod(stream_decorator)
 
+    @property
+    def is_alive(self) -> bool:
+        """
+        Return the status that the stock is connected.
+        If the stock uses several endpoints for example
+        (public_HTTP, private_HTTP, public_websocket, private_websocket)
+        this property returns False if ANY of them is disconnected
+        """
+        return NotImplemented()
+
     def datetime_from_UTC_to_server_time(self, utc_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone
+        No timezone
 
-            :return datetime.datetime on server
+        :return datetime.datetime on server
         """
         return NotImplemented()
 
     def datetime_from_server_time_to_UTC(self, server_time: datetime.datetime) -> datetime.datetime:
         """
-            No timezone
+        No timezone
 
-            :return datetime.datetime UTC
+        :return datetime.datetime UTC
         """
         return NotImplemented()
 
@@ -186,8 +194,18 @@ class IStock:
         """
         raise NotImplemented()
 
-    def formula_profit_loss(self, pair, side, average_entry_price_usdt, last_traded_price, qty,
-                            margin_leverage_pair, margin_leverage_pair_max, funding_rate, verbose=False):
+    def formula_profit_loss(
+        self,
+        pair,
+        side,
+        average_entry_price_usdt,
+        last_traded_price,
+        qty,
+        margin_leverage_pair,
+        margin_leverage_pair_max,
+        funding_rate,
+        verbose=False,
+    ):
         """
         Calculate the profit/losses (what you get in wallet) if close position by market
 
@@ -240,8 +258,7 @@ class IStock:
         raise NotImplemented()
 
     @stream_decorator
-    def stream_ticker(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
-                      pair) -> None:
+    def stream_ticker(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event, pair) -> None:
         """
         :param pair: "BTCUSDT"
         :param stop_event: to stop streaming
@@ -250,8 +267,9 @@ class IStock:
         raise NotImplemented()
 
     @stream_decorator
-    def stream_tohlcv(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
-                      pair, interval) -> None:
+    def stream_tohlcv(
+        self, handler: callable, handler_kwargs: dict, stop_event: threading.Event, pair, interval
+    ) -> None:
         """
 
         :param pair: "BTCUSDT"
@@ -261,8 +279,7 @@ class IStock:
         raise NotImplemented()
 
     @stream_decorator
-    def stream_order_book(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event,
-                          pair) -> None:
+    def stream_order_book(self, handler: callable, handler_kwargs: dict, stop_event: threading.Event, pair) -> None:
         """
 
         :param pair: "BTCUSDT"

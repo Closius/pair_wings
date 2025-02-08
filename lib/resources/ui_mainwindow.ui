@@ -15,28 +15,6 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="1">
-     <widget class="QTabWidget" name="tradingView_tabWidget">
-      <property name="currentIndex">
-       <number>0</number>
-      </property>
-      <widget class="QWidget" name="tradingView_tab">
-       <attribute name="title">
-        <string>Trading View</string>
-       </attribute>
-       <layout class="QGridLayout" name="gridLayout_4">
-        <item row="0" column="0">
-         <layout class="QGridLayout" name="tradingView_gridLayout"/>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="tab_2">
-       <attribute name="title">
-        <string>Tab 2</string>
-       </attribute>
-      </widget>
-     </widget>
-    </item>
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget_2">
       <property name="sizePolicy">
@@ -46,7 +24,7 @@
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
@@ -67,8 +45,8 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
-         <widget class="QListView" name="pairs_listView"/>
+        <item row="2" column="2">
+         <widget class="QComboBox" name="interval_comboBox"/>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="label">
@@ -77,8 +55,8 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QComboBox" name="interval_comboBox"/>
+        <item row="1" column="2">
+         <widget class="QListWidget" name="pairs_listWidget"/>
         </item>
        </layout>
       </widget>
@@ -87,18 +65,11 @@
         <string>Settings</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="4" column="0">
-         <widget class="QPushButton" name="stockConnect_pushButton">
-          <property name="text">
-           <string>Connect</string>
-          </property>
-         </widget>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="stockNames_comboBox"/>
         </item>
         <item row="1" column="1">
          <widget class="QComboBox" name="accountNames_comboBox"/>
-        </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="stockNames_comboBox"/>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_3">
@@ -114,10 +85,10 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QCheckBox" name="stockAutoConnect_checkBox">
+        <item row="4" column="0" colspan="2">
+         <widget class="QPushButton" name="stockConnect_pushButton">
           <property name="text">
-           <string>Connect automatically</string>
+           <string>Connect</string>
           </property>
          </widget>
         </item>
@@ -134,19 +105,36 @@
           </property>
          </spacer>
         </item>
-        <item row="4" column="1">
-         <widget class="QPushButton" name="stockDisconnect_pushButton">
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="stockAutoConnect_checkBox">
           <property name="text">
-           <string>Disconnect</string>
+           <string>Connect automatically on start the app</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="0" colspan="2">
-         <widget class="QLabel" name="stockStatus_label">
+        <item row="3" column="0">
+         <widget class="QLabel" name="stock_status_label">
           <property name="text">
            <string>Status: </string>
           </property>
          </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QTabWidget" name="tradingView_tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tradingView_tab">
+       <attribute name="title">
+        <string>Trading View</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="tradingView_gridLayout"/>
         </item>
        </layout>
       </widget>

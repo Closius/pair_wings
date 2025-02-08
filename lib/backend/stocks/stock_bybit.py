@@ -31,35 +31,78 @@ class StockBybit(IStock):
     def __init__(self, account_name=None, api_key=None, api_secret=None, demo=True):
         super().__init__()
         self.log_stock = logging.getLogger()
-        self.log_stock.info(f"Connecting to public Bybit ...")
+        self.log_stock.info(f"Connecting to public Bybit HTTP ...")
         self.demo = demo
         self.http = HTTP(demo=True)
         self.http_private = None
         self.ws_private = None
+        self.log_stock.info(f"Connecting to public Bybit WebSocket ...")
         self.ws = WebSocket(
             testnet=True,  # testnet gives wrong values! at least on HTTP
             channel_type="linear",
         )
+        self._is_http_ws_private_exist = False
 
         if account_name:
-            self.log_stock.info(f"Connecting to private Bybit: {account_name} ...")
+            self.log_stock.info(f"Connecting to private Bybit HTTP: {account_name} ...")
 
-            # You can create an authenticated or unauthenticated HTTP session.
-            # You can skip authentication by not passing any value for the key and secret.
-            self.http_private = HTTP(
-                api_key=api_key,
-                api_secret=api_secret,
-                demo=self.demo,
-                recv_window=20000,
-            )
+            try:
+                self.http_private = HTTP(
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    demo=self.demo,
+                    recv_window=20000,
+                )
+            except Exception as ex:
+                self.log_stock.exception(ex)
+                self.http_private = None
 
-            self.ws_private = WebSocket(
-                demo=self.demo,
-                testnet=False,
-                channel_type="private",
-                api_key=api_key,
-                api_secret=api_secret,
-            )
+            self._ws_private_success = False
+
+            def cb(msg: dict):
+                self.log_stock.info(f"websocket private: {msg}")
+                if msg.get("success", None):
+                    self._ws_private_success = True
+
+            self.log_stock.info(f"Connecting to private Bybit WebSocket: {account_name} ...")
+            try:
+                self.ws_private = WebSocket(
+                    callback_function=cb,
+                    demo=self.demo,
+                    testnet=False,
+                    channel_type="private",
+                    api_key=api_key,
+                    api_secret=api_secret,
+                )
+            except Exception as ex:
+                self.log_stock.exception(ex)
+                self.ws_private = None
+            self._is_http_ws_private_exist = True
+
+            i = 0
+            while not self._ws_private_success:
+                i += 1
+                time.sleep(1)
+                if i == 4:
+                    break
+            if not self._ws_private_success:
+                self.ws_private = None
+
+    @property
+    def is_alive(self):
+        """
+        Return the status that the stock is connected.
+        If the stock uses several endpoints for example
+        (public_HTTP, private_HTTP, public_websocket, private_websocket)
+        this property returns False if ANY of them is disconnected
+        """
+        if not self.http or not self.ws:
+            return False
+        if self._is_http_ws_private_exist:
+            if not self.http_private or not self.ws_private:
+                return False
+            return self.ws_private.is_connected()
+        return True
 
     def disconnect(self):
         # Known issue https://github.com/bybit-exchange/pybit/pull/253
