@@ -53,19 +53,19 @@ class DB(metaclass=utils.Singleton):
         """
         )
 
-    def create_candle_table(self, pair, recreate=False):
+    def create_candle_table(self, pair, interval, recreate=False):
         """
         A historical candles table. each row - the finished candle for current period
         """
         if recreate:
             self.cur.execute(
                 f"""
-                DROP TABLE IF EXISTS candles_{pair}
+                DROP TABLE IF EXISTS candles_{pair}_{interval}
             """
             )
         self.cur.execute(
             f"""
-            CREATE TABLE IF NOT EXISTS candles_{pair}
+            CREATE TABLE IF NOT EXISTS candles_{pair}_{interval}
                 ({self.map.candle.get_names_types_for_DB()})
         """
         )
@@ -114,7 +114,7 @@ class DB(metaclass=utils.Singleton):
         )
         self.con.commit()
 
-    def insert_candle(self, pair, obj: Candle):
+    def insert_candle(self, pair, interval, obj: Candle):
         """
         Insert into the historical candles table. each row - the finished candle for current period
         """
@@ -123,7 +123,7 @@ class DB(metaclass=utils.Singleton):
         q = ",".join(["?"] * len(self.map.candle.get_db_names()))
         self.cur.execute(
             f"""
-            INSERT INTO candles_{pair} VALUES
+            INSERT INTO candles_{pair}_{interval} VALUES
                 ({q})
         """,
             cols,
@@ -180,22 +180,22 @@ class DB(metaclass=utils.Singleton):
         # df.drop(columns=[self.map.ticker.Time.db_name])
         return df
 
-    def read_candle_table(self, pair, t_start=None, t_end=None):
+    def read_candle_table(self, pair, interval, t_start=None, t_end=None) -> pd.DataFrame:
         if t_start and t_end:
             res = self.cur.execute(
-                f"""SELECT * FROM candles_{pair} 
+                f"""SELECT * FROM candles_{pair}_{interval}
                 WHERE {self.map.candle.Time.db_name} >= {t_start} AND time <= {t_end}
                 ORDER BY {self.map.candle.Time.db_name}"""
             )
         elif t_start:
             res = self.cur.execute(
-                f"""SELECT * FROM candles_{pair} 
+                f"""SELECT * FROM candles_{pair}_{interval}
                 WHERE {self.map.candle.Time.db_name} >= {t_start}
                 ORDER BY {self.map.candle.Time.db_name}"""
             )
         else:
             res = self.cur.execute(
-                f"""SELECT * FROM candles_{pair} 
+                f"""SELECT * FROM candles_{pair}_{interval}
                 ORDER BY {self.map.candle.Time.db_name}"""
             )
         df = pd.DataFrame(res.fetchall(), columns=self.map.candle.get_db_names())

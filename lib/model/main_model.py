@@ -1,6 +1,6 @@
 import datetime
 
-from PySide6.QtCore import QObject, Slot, Signal, QSettings, QCoreApplication, QTimer
+from PySide6.QtCore import QObject, Slot, Signal, QSettings, QTimer
 
 from lib.misc import utils
 from lib.backend.api import BackendApi
@@ -22,6 +22,8 @@ class Model(QObject):
 
         self.api_secrets = None
         self._is_stock_connected = False
+
+        self.data = None
 
         self._check_stock_connection_status_timer = QTimer(self)
         self._check_stock_connection_status_timer.setInterval(1000)
@@ -101,7 +103,19 @@ class Model(QObject):
         self.backend_api.disconnect_stock()
 
     def draw_data(self):
-        pass
+        if self.use_current_end_datetime:
+            end_dt = None
+        else:
+            end_dt = self.end_datetime
+        self.backend_api.collect_candles(
+            pair=self.pairs[0],
+            interval=self.interval,
+            start_utc=utils.datetime_to_text(self.begin_datetime),
+            end_utc=end_dt,
+        )
+        data = self.backend_api.get_candles(pair=self.pairs[0], interval=self.interval)
+        self.data = {self.pairs[0]: {self.interval: data}}
+        self.data_to_draw.emit()
 
     @property
     def stock_name(self):

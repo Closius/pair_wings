@@ -1,6 +1,8 @@
+import os
 import logging
 from typing import List, Dict
 
+import pandas as pd
 import json5
 
 from lib.misc import utils
@@ -12,11 +14,13 @@ from lib.backend.data_collector import DataCollector
 class BackendApi:
 
     def __init__(self):
-        self.log = utils.setup_logger("", "../../pybit.log", level=logging.DEBUG, stream=True)
+        self.log = utils.setup_logger(
+            "", os.path.join(os.path.expanduser("~"), "pair_wings.log"), level=logging.DEBUG, stream=True
+        )
         self.stock_name = None
         self.account_name = None
         self.stock: StockBybit | None = None
-        self.db_filepath = "../../main.db"
+        self.db_filepath = os.path.join(os.path.expanduser("~"), "pair_wings.db")
         self.data_collector: DataCollector | None = None
 
     def read_api_secrets(self, api_secrets_file: str) -> Dict:
@@ -56,3 +60,6 @@ class BackendApi:
         self.data_collector.collect_history_candles(
             pair=pair, interval=interval, start_utc=start_utc, end_utc=end_utc, recreate=True
         )
+
+    def get_candles(self, pair, interval) -> pd.DataFrame:
+        return self.data_collector.db.read_candle_table(pair, interval)

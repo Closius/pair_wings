@@ -1,3 +1,5 @@
+import pandas as pd
+
 from PySide6.QtWidgets import QMainWindow
 from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QIcon
@@ -17,12 +19,6 @@ class MainView(QMainWindow):
         self._main_controller = main_controller
         self._ui = Ui_MainWindow()
         self._ui.setupUi(self)
-
-        # chart = QtChart()
-        # # Columns: time | open | high | low | close | volume
-        # df = pd.read_csv('ohlcv.csv')
-        # chart.set(df)
-        # self._ui.tradingView_gridLayout.addWidget(chart.get_webview(), 0, 0, 1, 1)
 
         # connect widgets to controller (direct or indirect)
         self._ui.stockNames_comboBox.currentTextChanged.connect(
@@ -158,4 +154,25 @@ class MainView(QMainWindow):
 
     @Slot()
     def on_data_to_draw(self):
-        pass
+        data = self._model.data
+        df: pd.DataFrame = data[self._model.pairs[0]][self._model.interval]
+        df.rename(
+            columns={
+                "Id": "id",
+                "Time": "time",
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Volume": "volume",
+                "Turnover": "turnover",
+            },
+            inplace=True,
+        )
+        df = df.drop(["turnover", "id"], axis=1)
+        df.info()
+
+        chart = QtChart()
+        # # Columns: time | open | high | low | close | volume
+        chart.set(df)
+        self._ui.tradingView_gridLayout.addWidget(chart.get_webview(), 0, 0, 1, 1)

@@ -39,10 +39,10 @@ class DataCollector:
         :return:
         """
         self.log.info(f"collect_candles {pair}")
-        self.db.create_candle_table(pair, recreate)
+        self.db.create_candle_table(pair, interval, recreate)
 
         for candle in self.stock.get_history_tohlcv(pair, interval, start_utc, end_utc, verbose=True):
-            self.db.insert_candle(pair=pair, obj=candle)
+            self.db.insert_candle(pair=pair, interval=interval, obj=candle)
 
         self.log.info(f"collect_candles Finished.")
 

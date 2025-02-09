@@ -65,7 +65,7 @@ def main():
         )
 
     elif r == "3":
-        data_show.draw_candles(db_filepath, pair=pair)
+        data_show.draw_candles(db_filepath, pair=pair, interval="5")
     elif r == "4":
         data_show.read_order_book(db_filepath, pair=pair)
     elif r == "5":
