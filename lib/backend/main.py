@@ -5,7 +5,8 @@ import time
 
 import json5
 
-from lib.backend import data_collector, data_show, random_trade, utils
+from lib.backend import data_collector, data_show, random_trade
+from lib.misc import utils
 
 from lib.backend.stocks.stock_bybit import StockBybit
 

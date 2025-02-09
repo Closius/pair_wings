@@ -1,30 +1,27 @@
+import datetime
+
 from PySide6.QtCore import QObject, Slot, Signal, QSettings, QCoreApplication, QTimer
 
-
-from lib.backend import api
+from lib.misc import utils
+from lib.backend.api import BackendApi
 
 
 class Model(QObject):
     model_init = Signal()
     stock_connected = Signal()
     stock_disconnected = Signal()
+    use_current_end_datetime_changed = Signal()
+    data_to_draw = Signal()
 
     def __init__(self):
         super().__init__()
 
         self.settings = QSettings("Pair Wings", "App")
 
-        self.backend_api = api.BackendApi()
+        self.backend_api = BackendApi()
 
         self.api_secrets = None
-
-        self._stock_name = None
-        self._account_name = None
-        self._auto_connect = False
         self._is_stock_connected = False
-
-        self._pairs = None
-        self._interval = None
 
         self._check_stock_connection_status_timer = QTimer(self)
         self._check_stock_connection_status_timer.setInterval(1000)
@@ -52,6 +49,32 @@ class Model(QObject):
         self.pairs = self.settings.value("settings/pairs", None)
         self.interval = self.settings.value("settings/interval", None)
 
+        _ac = self.settings.value("settings/use_current_end_datetime", True)
+        if isinstance(_ac, str):
+            _ac = True if _ac == "true" else False
+        self.use_current_end_datetime = _ac
+
+        _ac = self.settings.value("settings/restore_begin_end_from_settings", False)
+        if isinstance(_ac, str):
+            _ac = True if _ac == "true" else False
+        self.restore_begin_end_from_settings = _ac
+
+        _ac = self.settings.value("settings/end_datetime", utils.datetime_now())
+        if isinstance(_ac, str):
+            _ac = utils.datetime_text_to_datetime(_ac)
+        if self.restore_begin_end_from_settings:
+            self.end_datetime = _ac
+        else:
+            self.end_datetime = utils.datetime_now()
+
+        _ac = self.settings.value("settings/begin_datetime", self._end_datetime - datetime.timedelta(days=1))
+        if isinstance(_ac, str):
+            _ac = utils.datetime_text_to_datetime(_ac)
+        if self.restore_begin_end_from_settings:
+            self.begin_datetime = _ac
+        else:
+            self.begin_datetime = self._end_datetime - datetime.timedelta(days=1)
+
         self.model_init.emit()
 
     @Slot()
@@ -76,6 +99,9 @@ class Model(QObject):
 
     def disconnect_stock(self):
         self.backend_api.disconnect_stock()
+
+    def draw_data(self):
+        pass
 
     @property
     def stock_name(self):
@@ -105,6 +131,15 @@ class Model(QObject):
         self.settings.setValue("settings/auto_connect", value)
 
     @property
+    def restore_begin_end_from_settings(self):
+        return self._restore_begin_end_from_settings
+
+    @restore_begin_end_from_settings.setter
+    def restore_begin_end_from_settings(self, value):
+        self._restore_begin_end_from_settings = value
+        self.settings.setValue("settings/restore_begin_end_from_settings", value)
+
+    @property
     def pairs(self):
         return self._pairs
 
@@ -121,3 +156,31 @@ class Model(QObject):
     def interval(self, value):
         self._interval = value
         self.settings.setValue("settings/interval", value)
+
+    @property
+    def begin_datetime(self):
+        return self._begin_datetime
+
+    @begin_datetime.setter
+    def begin_datetime(self, value):
+        self._begin_datetime = value
+        self.settings.setValue("settings/begin_datetime", utils.datetime_to_text(value))
+
+    @property
+    def end_datetime(self):
+        return self._end_datetime
+
+    @end_datetime.setter
+    def end_datetime(self, value):
+        self._end_datetime = value
+        self.settings.setValue("settings/end_datetime", utils.datetime_to_text(value))
+
+    @property
+    def use_current_end_datetime(self):
+        return self._use_current_end_datetime
+
+    @use_current_end_datetime.setter
+    def use_current_end_datetime(self, value):
+        self._use_current_end_datetime = value
+        self.settings.setValue("settings/use_current_end_datetime", value)
+        self.use_current_end_datetime_changed.emit()

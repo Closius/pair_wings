@@ -15,10 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
-    QLabel, QListWidget, QListWidgetItem, QMainWindow,
-    QMenuBar, QPushButton, QSizePolicy, QSpacerItem,
-    QStatusBar, QTabWidget, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
+    QGridLayout, QLabel, QListWidget, QListWidgetItem,
+    QMainWindow, QMenuBar, QPushButton, QSizePolicy,
+    QSpacerItem, QStatusBar, QTabWidget, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -48,29 +48,67 @@ class Ui_MainWindow(object):
         self.draw_pushButton = QPushButton(self.tab_3)
         self.draw_pushButton.setObjectName(u"draw_pushButton")
 
-        self.gridLayout_2.addWidget(self.draw_pushButton, 3, 0, 1, 1)
-
-        self.interval_comboBox = QComboBox(self.tab_3)
-        self.interval_comboBox.setObjectName(u"interval_comboBox")
-
-        self.gridLayout_2.addWidget(self.interval_comboBox, 2, 2, 1, 1)
+        self.gridLayout_2.addWidget(self.draw_pushButton, 5, 0, 1, 1)
 
         self.label = QLabel(self.tab_3)
         self.label.setObjectName(u"label")
 
         self.gridLayout_2.addWidget(self.label, 1, 0, 1, 1)
 
+        self.begin_dateTimeEdit = QDateTimeEdit(self.tab_3)
+        self.begin_dateTimeEdit.setObjectName(u"begin_dateTimeEdit")
+        self.begin_dateTimeEdit.setCalendarPopup(True)
+        self.begin_dateTimeEdit.setTimeSpec(Qt.UTC)
+
+        self.gridLayout_2.addWidget(self.begin_dateTimeEdit, 3, 2, 1, 1)
+
+        self.label_5 = QLabel(self.tab_3)
+        self.label_5.setObjectName(u"label_5")
+
+        self.gridLayout_2.addWidget(self.label_5, 3, 0, 1, 1)
+
+        self.label_6 = QLabel(self.tab_3)
+        self.label_6.setObjectName(u"label_6")
+
+        self.gridLayout_2.addWidget(self.label_6, 4, 0, 1, 1)
+
+        self.interval_comboBox = QComboBox(self.tab_3)
+        self.interval_comboBox.setObjectName(u"interval_comboBox")
+
+        self.gridLayout_2.addWidget(self.interval_comboBox, 2, 2, 1, 2)
+
         self.pairs_listWidget = QListWidget(self.tab_3)
         self.pairs_listWidget.setObjectName(u"pairs_listWidget")
         self.pairs_listWidget.setSelectionRectVisible(True)
 
-        self.gridLayout_2.addWidget(self.pairs_listWidget, 1, 2, 1, 1)
+        self.gridLayout_2.addWidget(self.pairs_listWidget, 1, 2, 1, 2)
+
+        self.end_dateTimeEdit = QDateTimeEdit(self.tab_3)
+        self.end_dateTimeEdit.setObjectName(u"end_dateTimeEdit")
+        self.end_dateTimeEdit.setCalendarPopup(True)
+        self.end_dateTimeEdit.setTimeSpec(Qt.UTC)
+
+        self.gridLayout_2.addWidget(self.end_dateTimeEdit, 4, 2, 1, 1)
+
+        self.use_current_end_checkBox = QCheckBox(self.tab_3)
+        self.use_current_end_checkBox.setObjectName(u"use_current_end_checkBox")
+
+        self.gridLayout_2.addWidget(self.use_current_end_checkBox, 4, 3, 1, 1)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_2.addItem(self.verticalSpacer_2, 6, 0, 1, 1)
 
         self.tabWidget_2.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
         self.tab_4.setObjectName(u"tab_4")
         self.gridLayout_3 = QGridLayout(self.tab_4)
         self.gridLayout_3.setObjectName(u"gridLayout_3")
+        self.stock_status_label = QLabel(self.tab_4)
+        self.stock_status_label.setObjectName(u"stock_status_label")
+
+        self.gridLayout_3.addWidget(self.stock_status_label, 4, 0, 1, 1)
+
         self.stockNames_comboBox = QComboBox(self.tab_4)
         self.stockNames_comboBox.setObjectName(u"stockNames_comboBox")
 
@@ -94,21 +132,21 @@ class Ui_MainWindow(object):
         self.stockConnect_pushButton = QPushButton(self.tab_4)
         self.stockConnect_pushButton.setObjectName(u"stockConnect_pushButton")
 
-        self.gridLayout_3.addWidget(self.stockConnect_pushButton, 4, 0, 1, 2)
+        self.gridLayout_3.addWidget(self.stockConnect_pushButton, 5, 0, 1, 2)
 
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_3.addItem(self.verticalSpacer, 5, 0, 1, 1)
+        self.gridLayout_3.addItem(self.verticalSpacer, 6, 0, 1, 1)
 
         self.stockAutoConnect_checkBox = QCheckBox(self.tab_4)
         self.stockAutoConnect_checkBox.setObjectName(u"stockAutoConnect_checkBox")
 
         self.gridLayout_3.addWidget(self.stockAutoConnect_checkBox, 2, 0, 1, 1)
 
-        self.stock_status_label = QLabel(self.tab_4)
-        self.stock_status_label.setObjectName(u"stock_status_label")
+        self.restore_begin_end_checkBox = QCheckBox(self.tab_4)
+        self.restore_begin_end_checkBox.setObjectName(u"restore_begin_end_checkBox")
 
-        self.gridLayout_3.addWidget(self.stock_status_label, 3, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.restore_begin_end_checkBox, 3, 0, 1, 1)
 
         self.tabWidget_2.addTab(self.tab_4, "")
 
@@ -152,12 +190,18 @@ class Ui_MainWindow(object):
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"Interval", None))
         self.draw_pushButton.setText(QCoreApplication.translate("MainWindow", u"Draw", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Pairs", None))
+        self.begin_dateTimeEdit.setDisplayFormat(QCoreApplication.translate("MainWindow", u"d MMM yyyy h:mm", None))
+        self.label_5.setText(QCoreApplication.translate("MainWindow", u"Begin (UTC)", None))
+        self.label_6.setText(QCoreApplication.translate("MainWindow", u"End (UTC)", None))
+        self.end_dateTimeEdit.setDisplayFormat(QCoreApplication.translate("MainWindow", u"d MMM yyyy h:mm", None))
+        self.use_current_end_checkBox.setText(QCoreApplication.translate("MainWindow", u"Current", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Trading", None))
+        self.stock_status_label.setText(QCoreApplication.translate("MainWindow", u"Status: ", None))
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"Stock", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"Account", None))
         self.stockConnect_pushButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.stockAutoConnect_checkBox.setText(QCoreApplication.translate("MainWindow", u"Connect automatically on start the app", None))
-        self.stock_status_label.setText(QCoreApplication.translate("MainWindow", u"Status: ", None))
+        self.restore_begin_end_checkBox.setText(QCoreApplication.translate("MainWindow", u"Save begin/end datetimes", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Settings", None))
         self.tradingView_tabWidget.setTabText(self.tradingView_tabWidget.indexOf(self.tradingView_tab), QCoreApplication.translate("MainWindow", u"Trading View", None))
     # retranslateUi

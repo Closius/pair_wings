@@ -9,11 +9,11 @@ from concurrent.futures import ThreadPoolExecutor
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-plt.style.use('ggplot')
+plt.style.use("ggplot")
 
 import numpy as np
 
-from lib.backend import utils
+from lib.misc import utils
 
 
 def open_add_position(stock, pair, side, percent_from_deposit=1.0, qty=0.01, wait_for_add_second=None, add_qty=0.01):
@@ -34,16 +34,16 @@ def open_add_position(stock, pair, side, percent_from_deposit=1.0, qty=0.01, wai
     takeProfit = round(ticker.MarkPrice + (3 * p1) * position_side, precision)
     log.info(f"\t + 1%: {p1}")
     amount = qty * ticker.MarkPrice
-    stock.open_modify_SHORT_LONG(side=side, pair=pair,
-                                 amount_money_add=amount, stopLoss=stopLoss,
-                                 takeProfit=takeProfit)
+    stock.open_modify_SHORT_LONG(
+        side=side, pair=pair, amount_money_add=amount, stopLoss=stopLoss, takeProfit=takeProfit
+    )
 
     if wait_for_add_second:
         log.info(f"wait_for_add_second: {wait_for_add_second}")
         time.sleep(wait_for_add_second)
         amount = add_qty * ticker.MarkPrice
-        stock.open_modify_SHORT_LONG(side=side, pair=pair,
-                                     amount_money_add=amount)
+        stock.open_modify_SHORT_LONG(side=side, pair=pair, amount_money_add=amount)
+
 
 def close_position(stock, pair, amount_percent=100, verbose=False):
     log = logging.getLogger(pair)
@@ -52,15 +52,17 @@ def close_position(stock, pair, amount_percent=100, verbose=False):
         earn_net = stock.close_SHORT_LONG(pair=pair, amount_percent=amount_percent)
     else:
         raise ValueError("Position not exist. Maybe closed?")
-    error_percent = round(utils.error_percent(experiment=earn_net,
-                                              theory=position.Closed_PL_Money), 2)
+    error_percent = round(utils.error_percent(experiment=earn_net, theory=position.Closed_PL_Money), 2)
     log.info(f"Error calculated PL and Earned netto: {error_percent} %")
 
-    return {"earn_net": earn_net,
-         "error_percent": error_percent,
-         "ROI_percent": position.ROI_percent,
-         "Unrealized_PL_Money": position.Unrealized_PL_Money,
-         "Closed_PL_Money": position.Closed_PL_Money}
+    return {
+        "earn_net": earn_net,
+        "error_percent": error_percent,
+        "ROI_percent": position.ROI_percent,
+        "Unrealized_PL_Money": position.Unrealized_PL_Money,
+        "Closed_PL_Money": position.Closed_PL_Money,
+    }
+
 
 def random_trade(pair, stock, n_steps, folder):
     if not os.path.exists(folder):
@@ -82,11 +84,15 @@ def random_trade(pair, stock, n_steps, folder):
             # if wait_for_add_second <= 0:
             #     wait_for_add_second = None
             wait_for_add_second = None
-            open_add_position(stock, pair=pair, side=random.choice(["SHORT", "LONG"]),
-                              percent_from_deposit=1,  # random.uniform(0.5, 3.0),
-                              qty=qty,
-                              wait_for_add_second=wait_for_add_second,
-                              add_qty=qty)
+            open_add_position(
+                stock,
+                pair=pair,
+                side=random.choice(["SHORT", "LONG"]),
+                percent_from_deposit=1,  # random.uniform(0.5, 3.0),
+                qty=qty,
+                wait_for_add_second=wait_for_add_second,
+                add_qty=qty,
+            )
             wait_for_close_seconds = random.randint(10, 30)
             log.info(f"wait_for_close_seconds: {wait_for_close_seconds}")
             time.sleep(wait_for_close_seconds)
@@ -122,6 +128,7 @@ def random_trade(pair, stock, n_steps, folder):
 
     return results
 
+
 def random_trade_plot_results(results, pair, folder=None, save_only=True):
     exclude = ["error_percent"]
 
@@ -149,10 +156,14 @@ def random_trade_plot_results(results, pair, folder=None, save_only=True):
 
         color = colors[i]
         if k not in exclude:
-            _ax.scatter(results["earn_net"], v, marker='s', color=color, s=3)
-            lns += _ax.plot(results["earn_net"],
-                            np.poly1d(np.polyfit(results["earn_net"], v, 1))(results["earn_net"]),
-                            color=color, label=k, linewidth=1)
+            _ax.scatter(results["earn_net"], v, marker="s", color=color, s=3)
+            lns += _ax.plot(
+                results["earn_net"],
+                np.poly1d(np.polyfit(results["earn_net"], v, 1))(results["earn_net"]),
+                color=color,
+                label=k,
+                linewidth=1,
+            )
             if k not in new_axis:
                 mn.append(min(v))
                 mx.append(max(v))
@@ -164,15 +175,15 @@ def random_trade_plot_results(results, pair, folder=None, save_only=True):
         else:
             i += 1
 
-    ax.grid(visible=True, linestyle='--')
+    ax.grid(visible=True, linestyle="--")
     mn = min(mn)
     mx = max(mx)
     ax.set_xlim([mn, mx])
     ax.set_ylim([mn, mx])
     ax.set_title(f"pair: {pair}, points: {len(results['earn_net'])}")
 
-    ax.set_xlabel('earn_net')
-    ax.set_ylabel('value')
+    ax.set_xlabel("earn_net")
+    ax.set_ylabel("value")
     labs = [l.get_label() for l in lns]
     ax.legend(lns, labs, fontsize=5)
 
@@ -185,6 +196,7 @@ def random_trade_plot_results(results, pair, folder=None, save_only=True):
 
 def main(pairs, stock, num_steps):
     log = logging.getLogger()
+
     def one_pair(pair, stock, n_steps, folder):
         results = random_trade(pair=pair, stock=stock, n_steps=n_steps, folder=folder)
         random_trade_plot_results(results, pair=pair, folder=folder, save_only=True)
@@ -207,13 +219,7 @@ def main(pairs, stock, num_steps):
         i = 1
         while pairs:
             pair = pairs.pop(0)
-            future = executor.submit(
-                one_pair,
-                pair=pair,
-                stock=stock,
-                n_steps=num_steps,
-                folder="results"
-            )
+            future = executor.submit(one_pair, pair=pair, stock=stock, n_steps=num_steps, folder="results")
             future.pair__ = pair
             future.i__ = i
             future.total_pairs__ = total_pairs

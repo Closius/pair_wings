@@ -1,6 +1,7 @@
 import logging
 
-from lib.backend import database, utils
+from lib.backend import database
+from lib.misc import utils
 
 from lib.backend.stocks.stock_interface import IStock
 
@@ -22,15 +23,10 @@ class DataCollector:
 
         def handler(message: Ticker):
             _db = database.DB(self.db_filepath)
-            _db.insert_ticker(
-                pair=pair,
-                obj=message
-            )
-            self.log.info(f'ticker {utils.datetime_to_text(message.Time)} | '
-                          f'{message.MarkPrice}')
+            _db.insert_ticker(pair=pair, obj=message)
+            self.log.info(f"ticker {utils.datetime_to_text(message.Time)} | " f"{message.MarkPrice}")
 
-        self.stock.stream_ticker(handler=handler, handler_kwargs={}, stop_event=stop_event,
-                                 pair=pair)
+        self.stock.stream_ticker(handler=handler, handler_kwargs={}, stop_event=stop_event, pair=pair)
 
     def collect_history_candles(self, pair, interval, start_utc, end_utc=None, recreate=False):
         """
@@ -46,10 +42,7 @@ class DataCollector:
         self.db.create_candle_table(pair, recreate)
 
         for candle in self.stock.get_history_tohlcv(pair, interval, start_utc, end_utc, verbose=True):
-            self.db.insert_candle(
-                pair=pair,
-                obj=candle
-            )
+            self.db.insert_candle(pair=pair, obj=candle)
 
         self.log.info(f"collect_candles Finished.")
 
@@ -59,16 +52,12 @@ class DataCollector:
 
         def handler(message: CandleTicker):
             _db = database.DB(self.db_filepath)
-            _db.insert_candle_ticker(
-                pair=pair,
-                interval=interval,
-                obj=message
-            )
-            self.log.info(f'candle {utils.datetime_to_text(message.Time)} | '
-                          f'{message.Close}')
+            _db.insert_candle_ticker(pair=pair, interval=interval, obj=message)
+            self.log.info(f"candle {utils.datetime_to_text(message.Time)} | " f"{message.Close}")
 
-        self.stock.stream_tohlcv(handler=handler, handler_kwargs={}, stop_event=stop_event,
-                                 pair=pair, interval=interval)
+        self.stock.stream_tohlcv(
+            handler=handler, handler_kwargs={}, stop_event=stop_event, pair=pair, interval=interval
+        )
 
     def collect_stream_order_book(self, pair, stop_event, recreate=False):
         self.log.info(f"collect_stream_order_book {pair}")
@@ -76,11 +65,7 @@ class DataCollector:
 
         def handler(message: OrderBook):
             _db = database.DB(self.db_filepath)
-            _db.insert_order_book(
-                pair=pair,
-                obj=message
-            )
-            self.log.info(f'order book {utils.datetime_to_text(message.Time)}')
+            _db.insert_order_book(pair=pair, obj=message)
+            self.log.info(f"order book {utils.datetime_to_text(message.Time)}")
 
-        self.stock.stream_order_book(handler=handler, handler_kwargs={}, stop_event=stop_event,
-                                 pair=pair)
+        self.stock.stream_order_book(handler=handler, handler_kwargs={}, stop_event=stop_event, pair=pair)

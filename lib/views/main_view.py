@@ -35,15 +35,26 @@ class MainView(QMainWindow):
         self._ui.stockAutoConnect_checkBox.checkStateChanged.connect(
             self._main_controller.stockAutoConnect_checkBox_checkStateChanged
         )
+        self._ui.restore_begin_end_checkBox.checkStateChanged.connect(
+            self._main_controller.restore_begin_end_checkBox_checkStateChanged
+        )
         self._ui.pairs_listWidget.itemSelectionChanged.connect(self.on_pairs_listWidget_itemSelectionChanged)
         self._ui.interval_comboBox.currentTextChanged.connect(
             self._main_controller.interval_comboBox_currentTextChanged
+        )
+        self._ui.draw_pushButton.clicked.connect(self._main_controller.draw_pushButton_clicked)
+        self._ui.begin_dateTimeEdit.dateTimeChanged.connect(self._main_controller.begin_dateTimeEdit_dateTimeChanged)
+        self._ui.end_dateTimeEdit.dateTimeChanged.connect(self._main_controller.end_dateTimeEdit_dateTimeChanged)
+        self._ui.use_current_end_checkBox.checkStateChanged.connect(
+            self._main_controller.use_current_end_checkBox_checkStateChanged
         )
 
         # listen for model event signals
         self._model.model_init.connect(self.init_view)
         self._model.stock_connected.connect(self.on_stock_connected)
         self._model.stock_disconnected.connect(self.on_stock_disconnected)
+        self._model.use_current_end_datetime_changed.connect(self.on_use_current_end_datetime_changed)
+        self._model.data_to_draw.connect(self.on_data_to_draw)
 
         # init Controller
         self._main_controller.init_controller()
@@ -62,10 +73,28 @@ class MainView(QMainWindow):
         self._ui.accountNames_comboBox.setCurrentText(self._model.account_name)
         self._ui.accountNames_comboBox.blockSignals(False)
 
+        self._ui.end_dateTimeEdit.blockSignals(True)
+        self._ui.end_dateTimeEdit.setDateTime(self._model.end_datetime)
+        self._ui.end_dateTimeEdit.blockSignals(False)
+
+        self._ui.begin_dateTimeEdit.blockSignals(True)
+        self._ui.begin_dateTimeEdit.setDateTime(self._model.begin_datetime)
+        self._ui.begin_dateTimeEdit.blockSignals(False)
+
+        if self._model.use_current_end_datetime:
+            self._ui.use_current_end_checkBox.setCheckState(Qt.CheckState.Checked)
+        else:
+            self._ui.use_current_end_checkBox.setCheckState(Qt.CheckState.Unchecked)
+
         if self._model.auto_connect:
             self._ui.stockAutoConnect_checkBox.setCheckState(Qt.CheckState.Checked)
         else:
             self._ui.stockAutoConnect_checkBox.setCheckState(Qt.CheckState.Unchecked)
+
+        if self._model.restore_begin_end_from_settings:
+            self._ui.restore_begin_end_checkBox.setCheckState(Qt.CheckState.Checked)
+        else:
+            self._ui.restore_begin_end_checkBox.setCheckState(Qt.CheckState.Unchecked)
 
     @Slot()
     def on_stock_connected(self):
@@ -119,3 +148,14 @@ class MainView(QMainWindow):
         self._main_controller.pairs_listWidget_itemSelectionChanged(
             [item.text() for item in self._ui.pairs_listWidget.selectedItems()]
         )
+
+    @Slot()
+    def on_use_current_end_datetime_changed(self):
+        if self._model.use_current_end_datetime:
+            self._ui.end_dateTimeEdit.setDisabled(True)
+        else:
+            self._ui.end_dateTimeEdit.setEnabled(True)
+
+    @Slot()
+    def on_data_to_draw(self):
+        pass

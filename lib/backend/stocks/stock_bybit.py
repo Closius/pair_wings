@@ -8,7 +8,7 @@ from pybit.unified_trading import WebSocket
 from pybit.unified_trading import HTTP
 
 from lib.backend.stocks.stock_interface import IStock, atomic_in_threads
-from lib.backend import utils
+from lib.misc import utils
 
 from lib.backend.schema import (
     Ticker,
