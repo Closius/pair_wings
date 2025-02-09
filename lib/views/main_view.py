@@ -1,9 +1,7 @@
-import math
 import pandas as pd
 
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QMainWindow, QMessageBox
 from PySide6.QtCore import Slot, Qt
-from PySide6.QtGui import QIcon
 from lib.views.ui_mainwindow import Ui_MainWindow
 
 from lightweight_charts.widgets import QtChart
@@ -142,6 +140,26 @@ class MainView(QMainWindow):
 
     @Slot()
     def on_pairs_listWidget_itemSelectionChanged(self):
+        if len(self._ui.pairs_listWidget.selectedItems()) > 4:
+            mb = QMessageBox(
+                QMessageBox.Icon.Warning,
+                "Limit are reached",
+                "Can't select more than 4 pairs",
+                QMessageBox.StandardButton.Ok,
+            )
+            mb.exec()
+            self._ui.pairs_listWidget.blockSignals(True)
+            for row in range(self._ui.pairs_listWidget.count()):
+                self._ui.pairs_listWidget.item(row).setSelected(False)
+            for pair in self._model.pairs:
+                item = self._ui.pairs_listWidget.findItems(pair, Qt.MatchFlag.MatchExactly)[0]
+                self._ui.pairs_listWidget.item(self._ui.pairs_listWidget.row(item)).setSelected(True)
+                self._ui.pairs_listWidget.scrollToItem(item)
+            self._ui.pairs_listWidget.blockSignals(False)
+            self._ui.selected_pairs_listWidget.clear()
+            self._ui.selected_pairs_listWidget.addItems(self._model.pairs)
+            return
+
         self._main_controller.pairs_listWidget_itemSelectionChanged(
             [item.text() for item in self._ui.pairs_listWidget.selectedItems()]
         )
@@ -158,8 +176,43 @@ class MainView(QMainWindow):
     @Slot()
     def on_data_to_draw(self):
         data = self._model.data
+        if len(data.keys()) == 1:
+            chart_base = QtChart()
+        elif len(data.keys()) == 2:
+            w = 1
+            h = 0.5
+            chart_base = QtChart(inner_width=w, inner_height=h)
+        else:
+            w = 0.5
+            h = 0.5
+            chart_base = QtChart(inner_width=w, inner_height=h)
         pair_chart = []
         for i, pair in enumerate(list(data.keys())):
+            if not pair_chart:
+                feature_chart = chart_base
+            elif i == 1:
+                prev_pair, prev_chart = pair_chart[-1]
+                feature_chart = prev_chart.create_subchart(position="bottom", width=w, height=h, sync=True)
+            elif i == 2:
+                prev_pair, prev_chart = pair_chart[-2]
+                feature_chart = prev_chart.create_subchart(position="right", width=w, height=h, sync=True)
+            elif i == 3:
+                prev_pair, prev_chart = pair_chart[-1]
+                feature_chart = prev_chart.create_subchart(position="bottom", width=w, height=h, sync=True)
+            else:
+                break
+
+            feature_chart.legend(True)
+            feature_chart.crosshair(
+                mode="normal", vert_color="#FFFFFF", vert_style="dotted", horz_color="#FFFFFF", horz_style="dotted"
+            )
+            feature_chart.topbar.textbox("symbol", pair)
+            feature_chart.fit()
+            pair_chart.append((pair, feature_chart))
+
+        for i, _ in enumerate(list(data.keys())):
+            pair, chart = pair_chart[i]
+
             df: pd.DataFrame = data[pair][self._model.interval]
             df.rename(
                 columns={
@@ -175,26 +228,9 @@ class MainView(QMainWindow):
                 inplace=True,
             )
             df = df.drop(["turnover", "id"], axis=1)
-
-            chart = QtChart(toolbox=True)
-            chart.legend(True)
-            chart.crosshair(
-                mode="normal", vert_color="#FFFFFF", vert_style="dotted", horz_color="#FFFFFF", horz_style="dotted"
-            )
-            chart.topbar.textbox("symbol", pair)
             # # Columns: time | open | high | low | close | volume
             chart.set(df)
-            chart.fit()
-            pair_chart.append((pair, chart))
 
-        num_pairs = len(pair_chart)
-        hGrid = 2
-        wGrid = math.ceil(num_pairs / hGrid)
-
-        for row in range(hGrid):
-            for col in range(wGrid):
-                pair, chart = pair_chart.pop(0) if len(pair_chart) > 0 else None
-                if chart:
-                    self._ui.tradingView_gridLayout.addWidget(
-                        chart.get_webview(), row, col, 1, 1
-                    )  # row, column, rowSpan, columnSpan
+        self._ui.tradingView_gridLayout.addWidget(
+            chart_base.get_webview(), 0, 0, 1, 1
+        )  # row, column, rowSpan, columnSpan
