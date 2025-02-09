@@ -2,7 +2,7 @@ import logging
 import functools
 import datetime
 import threading
-from typing import List
+from typing import List, Dict
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -217,7 +217,7 @@ class IStock:
         """
         raise NotImplemented()
 
-    def get_history_tohlcv(self, pair, interval, start_utc, end_utc=None, verbose=False) -> List[Candle]:
+    def get_history_tohlcv(self, pair, interval: str, start_utc, end_utc=None, verbose=False) -> List[Candle]:
         """
 
         :param pair: "BTCUSDT"
@@ -249,6 +249,28 @@ class IStock:
         """
         raise NotImplemented()
 
+    def get_available_intervals(self) -> Dict[str, int]:
+        """
+        get available intervals for candles for all pairs
+
+        :return: dict {interval in str: interval in minutes}, for example
+                    {
+                        "1": 1,
+                        "3": 3,
+                        "5": 5,
+                        "15": 15,
+                        "30": 30,
+                        "60": 60,
+                        "120": 120,
+                        "240": 240,
+                        "360": 360,
+                        "720": 720,
+                        "D": 1440,
+                        "W": 10080,
+                    }
+        """
+        raise NotImplemented()
+
     def get_position_status(self, pair) -> Position:
         """
         for tests and some internal only. use stream for prod
@@ -268,11 +290,12 @@ class IStock:
 
     @stream_decorator
     def stream_tohlcv(
-        self, handler: callable, handler_kwargs: dict, stop_event: threading.Event, pair, interval
+        self, handler: callable, handler_kwargs: dict, stop_event: threading.Event, pair, interval: str
     ) -> None:
         """
 
         :param pair: "BTCUSDT"
+        :param interval: "5", "10", "30", ...
         :param stop_event: to stop streaming
         :return to `handler` CandleTicker
         """

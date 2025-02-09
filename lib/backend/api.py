@@ -43,3 +43,6 @@ class BackendApi:
         pairs = self.stock.get_all_pairs()
         pairs_USDT_only = [pair for pair in pairs if pair.endswith("USDT")]
         return pairs_USDT_only
+
+    def get_available_intervals(self) -> List[str]:
+        return list(self.stock.get_available_intervals().keys())

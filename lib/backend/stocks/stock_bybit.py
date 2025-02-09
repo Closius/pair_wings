@@ -600,37 +600,18 @@ class StockBybit(IStock):
             "Closed_PL_Money": closed_pl_usdt,
         }
 
-    def get_history_tohlcv(self, pair, interval, start_utc: str, end_utc: str = None, verbose=False):
+    def get_history_tohlcv(self, pair, interval: str, start_utc: str, end_utc: str = None, verbose=False):
         """
         start_utc, end_utc - datetime in UTC  format: lib/utils.py  DATA_FORMAT
         """
         log = logging.getLogger(pair)
-        allowed_intervals = [
-            "1",
-            "3",
-            "5",
-            "15",
-            "30",
-            "60",
-            "120",
-            "240",
-            "360",
-            "720",
-            "D",
-            "W",
-        ]
+        allowed_intervals = self.get_available_intervals()
         if interval not in allowed_intervals:
-            raise ValueError(f"Wrong interval '{interval}'. Allowed intervals {allowed_intervals}")
+            raise ValueError(f"Wrong interval '{interval}'. Allowed intervals {list(allowed_intervals.keys())}")
 
         # calculate paginations
         limit = 1000  # amount of candles in response. 1000 is max for bybit
         start_dt_utc = utils.datetime_text_to_datetime(start_utc)
-        if interval == "D":
-            interval_dt = 1440
-        elif interval == "W":
-            interval_dt = 10080
-        else:
-            interval_dt = int(interval)
         resp_all = []
         if end_utc:
             end_dt_utc = utils.datetime_text_to_datetime(end_utc)
@@ -683,7 +664,7 @@ class StockBybit(IStock):
             if end_dt <= last_dt:
                 break
             else:
-                start_dt = last_dt + datetime.timedelta(minutes=interval_dt)
+                start_dt = last_dt + datetime.timedelta(minutes=allowed_intervals[interval])
 
         if verbose:
             log.info(f"history_tohlcv collection finished")
@@ -713,6 +694,22 @@ class StockBybit(IStock):
             pairs.append(m["symbol"])
 
         return pairs
+
+    def get_available_intervals(self):
+        return {
+            "1": 1,
+            "3": 3,
+            "5": 5,
+            "15": 15,
+            "30": 30,
+            "60": 60,
+            "120": 120,
+            "240": 240,
+            "360": 360,
+            "720": 720,
+            "D": 1440,
+            "W": 10080,
+        }
 
     def get_position_status(self, pair, verbose=False):
         log = logging.getLogger(pair)
@@ -777,12 +774,15 @@ class StockBybit(IStock):
         return response
 
     @IStock.stream_decorator
-    def stream_tohlcv(self, handler, handler_kwargs, stop_event, pair, interval):
+    def stream_tohlcv(self, handler, handler_kwargs, stop_event, pair, interval: str):
         """
         https://bybit-exchange.github.io/docs/v5/websocket/public/kline
         """
 
         log = logging.getLogger(pair)
+        allowed_intervals = self.get_available_intervals()
+        if interval not in allowed_intervals:
+            raise ValueError(f"Wrong interval '{interval}'. Allowed intervals {list(allowed_intervals.keys())}")
 
         def handle_kline(message):
             # reformat

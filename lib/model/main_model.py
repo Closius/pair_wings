@@ -5,6 +5,7 @@ from lib.backend import api
 
 
 class Model(QObject):
+    model_init = Signal()
     stock_connected = Signal()
     stock_disconnected = Signal()
 
@@ -22,7 +23,8 @@ class Model(QObject):
         self._auto_connect = False
         self._is_stock_connected = False
 
-        self.init_data()
+        self._pairs = None
+        self._interval = None
 
         self._check_stock_connection_status_timer = QTimer(self)
         self._check_stock_connection_status_timer.setInterval(1000)
@@ -46,6 +48,11 @@ class Model(QObject):
         if isinstance(_ac, str):
             _ac = True if _ac == "true" else False
         self.auto_connect = _ac
+
+        self.pairs = self.settings.value("settings/pairs", None)
+        self.interval = self.settings.value("settings/interval", None)
+
+        self.model_init.emit()
 
     @Slot()
     def check_stock_connection_status(self):
@@ -96,3 +103,21 @@ class Model(QObject):
     def auto_connect(self, value):
         self._auto_connect = value
         self.settings.setValue("settings/auto_connect", value)
+
+    @property
+    def pairs(self):
+        return self._pairs
+
+    @pairs.setter
+    def pairs(self, value):
+        self._pairs = value
+        self.settings.setValue("settings/pairs", value)
+
+    @property
+    def interval(self):
+        return self._interval
+
+    @interval.setter
+    def interval(self, value):
+        self._interval = value
+        self.settings.setValue("settings/interval", value)

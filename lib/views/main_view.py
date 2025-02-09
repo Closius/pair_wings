@@ -17,8 +17,6 @@ class MainView(QMainWindow):
         self._main_controller = main_controller
         self._ui = Ui_MainWindow()
         self._ui.setupUi(self)
-        # set init values in View. Before the widgets connections are set
-        self.init_view()
 
         # chart = QtChart()
         # # Columns: time | open | high | low | close | volume
@@ -26,7 +24,7 @@ class MainView(QMainWindow):
         # chart.set(df)
         # self._ui.tradingView_gridLayout.addWidget(chart.get_webview(), 0, 0, 1, 1)
 
-        # connect widgets to controller
+        # connect widgets to controller (direct or indirect)
         self._ui.stockNames_comboBox.currentTextChanged.connect(
             self._main_controller.stockNames_comboBox_currentTextChanged
         )
@@ -37,20 +35,33 @@ class MainView(QMainWindow):
         self._ui.stockAutoConnect_checkBox.checkStateChanged.connect(
             self._main_controller.stockAutoConnect_checkBox_checkStateChanged
         )
+        self._ui.pairs_listWidget.itemSelectionChanged.connect(self.on_pairs_listWidget_itemSelectionChanged)
+        self._ui.interval_comboBox.currentTextChanged.connect(
+            self._main_controller.interval_comboBox_currentTextChanged
+        )
 
         # listen for model event signals
+        self._model.model_init.connect(self.init_view)
         self._model.stock_connected.connect(self.on_stock_connected)
         self._model.stock_disconnected.connect(self.on_stock_disconnected)
 
-        # init Controller once all widget connections in View are set
+        # init Controller
         self._main_controller.init_controller()
 
+    @Slot()
     def init_view(self):
         self.statusBar().showMessage(f"Disconnected")
+
+        self._ui.stockNames_comboBox.blockSignals(True)
         self._ui.stockNames_comboBox.addItems(self._model.api_secrets["stocks"])
         self._ui.stockNames_comboBox.setCurrentText(self._model.stock_name)
+        self._ui.stockNames_comboBox.blockSignals(False)
+
+        self._ui.accountNames_comboBox.blockSignals(True)
         self._ui.accountNames_comboBox.addItems(self._model.api_secrets["stocks"][self._model.stock_name]["accounts"])
         self._ui.accountNames_comboBox.setCurrentText(self._model.account_name)
+        self._ui.accountNames_comboBox.blockSignals(False)
+
         if self._model.auto_connect:
             self._ui.stockAutoConnect_checkBox.setCheckState(Qt.CheckState.Checked)
         else:
@@ -62,14 +73,31 @@ class MainView(QMainWindow):
         self._ui.stockConnect_pushButton.setText("Disconnect")
         self.statusBar().showMessage(f"Connected | {self._model.stock_name} | {self._model.account_name}")
 
+        self._ui.pairs_listWidget.blockSignals(True)
         all_pairs = self._model.backend_api.get_all_pairs()
         self._ui.pairs_listWidget.clear()
         self._ui.pairs_listWidget.addItems(all_pairs)
         self._ui.pairs_listWidget.setCurrentRow(0)
+        for pair in self._model.pairs:
+            item = self._ui.pairs_listWidget.findItems(pair, Qt.MatchFlag.MatchExactly)[0]
+            self._ui.pairs_listWidget.item(self._ui.pairs_listWidget.row(item)).setSelected(True)
+            self._ui.pairs_listWidget.scrollToItem(item)
+        self._ui.pairs_listWidget.blockSignals(False)
+
+        self._ui.interval_comboBox.blockSignals(True)
+        all_intervals = self._model.backend_api.get_available_intervals()
+        self._ui.interval_comboBox.clear()
+        self._ui.interval_comboBox.addItems(all_intervals)
+        self._ui.interval_comboBox.setCurrentIndex(0)
+        if self._model.interval:
+            self._ui.interval_comboBox.setCurrentText(self._model.interval)
+        self._ui.interval_comboBox.blockSignals(False)
 
         self._ui.stockNames_comboBox.setDisabled(True)
         self._ui.accountNames_comboBox.setDisabled(True)
         self._ui.draw_pushButton.setEnabled(True)
+        self._ui.pairs_listWidget.setEnabled(True)
+        self._ui.interval_comboBox.setEnabled(True)
 
     @Slot()
     def on_stock_disconnected(self):
@@ -80,6 +108,14 @@ class MainView(QMainWindow):
         self._ui.stockNames_comboBox.setEnabled(True)
         self._ui.accountNames_comboBox.setEnabled(True)
         self._ui.draw_pushButton.setDisabled(True)
+        self._ui.pairs_listWidget.setDisabled(True)
+        self._ui.interval_comboBox.setDisabled(True)
 
     def closeEvent(self, event):
-        self._model.backend_api.disconnect_stock()
+        self._main_controller.close()
+
+    @Slot()
+    def on_pairs_listWidget_itemSelectionChanged(self):
+        self._main_controller.pairs_listWidget_itemSelectionChanged(
+            [item.text() for item in self._ui.pairs_listWidget.selectedItems()]
+        )

@@ -62,6 +62,7 @@ class Ui_MainWindow(object):
 
         self.pairs_listWidget = QListWidget(self.tab_3)
         self.pairs_listWidget.setObjectName(u"pairs_listWidget")
+        self.pairs_listWidget.setSelectionRectVisible(True)
 
         self.gridLayout_2.addWidget(self.pairs_listWidget, 1, 2, 1, 1)
 
