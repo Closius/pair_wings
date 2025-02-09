@@ -107,14 +107,16 @@ class Model(QObject):
             end_dt = None
         else:
             end_dt = self.end_datetime
-        self.backend_api.collect_candles(
-            pair=self.pairs[0],
-            interval=self.interval,
-            start_utc=utils.datetime_to_text(self.begin_datetime),
-            end_utc=end_dt,
-        )
-        data = self.backend_api.get_candles(pair=self.pairs[0], interval=self.interval)
-        self.data = {self.pairs[0]: {self.interval: data}}
+        self.data = {}
+        for pair in self._pairs:
+            self.backend_api.collect_candles(
+                pair=pair,
+                interval=self.interval,
+                start_utc=utils.datetime_to_text(self.begin_datetime),
+                end_utc=end_dt,
+            )
+            data = self.backend_api.get_candles(pair=pair, interval=self.interval)
+            self.data[pair] = {self.interval: data}
         self.data_to_draw.emit()
 
     @property

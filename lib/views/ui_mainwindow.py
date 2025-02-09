@@ -15,10 +15,11 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
-    QGridLayout, QLabel, QListWidget, QListWidgetItem,
-    QMainWindow, QMenuBar, QPushButton, QSizePolicy,
-    QSpacerItem, QStatusBar, QTabWidget, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
+    QDateTimeEdit, QGridLayout, QLabel, QListWidget,
+    QListWidgetItem, QMainWindow, QMenuBar, QPushButton,
+    QSizePolicy, QSpacerItem, QStatusBar, QTabWidget,
+    QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -43,12 +44,12 @@ class Ui_MainWindow(object):
         self.label_2 = QLabel(self.tab_3)
         self.label_2.setObjectName(u"label_2")
 
-        self.gridLayout_2.addWidget(self.label_2, 2, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.label_2, 3, 0, 1, 1)
 
         self.draw_pushButton = QPushButton(self.tab_3)
         self.draw_pushButton.setObjectName(u"draw_pushButton")
 
-        self.gridLayout_2.addWidget(self.draw_pushButton, 5, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.draw_pushButton, 6, 0, 1, 1)
 
         self.label = QLabel(self.tab_3)
         self.label.setObjectName(u"label")
@@ -60,44 +61,61 @@ class Ui_MainWindow(object):
         self.begin_dateTimeEdit.setCalendarPopup(True)
         self.begin_dateTimeEdit.setTimeSpec(Qt.UTC)
 
-        self.gridLayout_2.addWidget(self.begin_dateTimeEdit, 3, 2, 1, 1)
+        self.gridLayout_2.addWidget(self.begin_dateTimeEdit, 4, 2, 1, 1)
 
         self.label_5 = QLabel(self.tab_3)
         self.label_5.setObjectName(u"label_5")
 
-        self.gridLayout_2.addWidget(self.label_5, 3, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.label_5, 4, 0, 1, 1)
 
         self.label_6 = QLabel(self.tab_3)
         self.label_6.setObjectName(u"label_6")
 
-        self.gridLayout_2.addWidget(self.label_6, 4, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.label_6, 5, 0, 1, 1)
 
         self.interval_comboBox = QComboBox(self.tab_3)
         self.interval_comboBox.setObjectName(u"interval_comboBox")
 
-        self.gridLayout_2.addWidget(self.interval_comboBox, 2, 2, 1, 2)
+        self.gridLayout_2.addWidget(self.interval_comboBox, 3, 2, 1, 2)
 
         self.pairs_listWidget = QListWidget(self.tab_3)
         self.pairs_listWidget.setObjectName(u"pairs_listWidget")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.pairs_listWidget.sizePolicy().hasHeightForWidth())
+        self.pairs_listWidget.setSizePolicy(sizePolicy1)
+        self.pairs_listWidget.setSelectionMode(QAbstractItemView.MultiSelection)
         self.pairs_listWidget.setSelectionRectVisible(True)
 
         self.gridLayout_2.addWidget(self.pairs_listWidget, 1, 2, 1, 2)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_2.addItem(self.verticalSpacer_2, 7, 0, 1, 1)
 
         self.end_dateTimeEdit = QDateTimeEdit(self.tab_3)
         self.end_dateTimeEdit.setObjectName(u"end_dateTimeEdit")
         self.end_dateTimeEdit.setCalendarPopup(True)
         self.end_dateTimeEdit.setTimeSpec(Qt.UTC)
 
-        self.gridLayout_2.addWidget(self.end_dateTimeEdit, 4, 2, 1, 1)
+        self.gridLayout_2.addWidget(self.end_dateTimeEdit, 5, 2, 1, 1)
 
         self.use_current_end_checkBox = QCheckBox(self.tab_3)
         self.use_current_end_checkBox.setObjectName(u"use_current_end_checkBox")
 
-        self.gridLayout_2.addWidget(self.use_current_end_checkBox, 4, 3, 1, 1)
+        self.gridLayout_2.addWidget(self.use_current_end_checkBox, 5, 3, 1, 1)
 
-        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.selected_pairs_listWidget = QListWidget(self.tab_3)
+        self.selected_pairs_listWidget.setObjectName(u"selected_pairs_listWidget")
+        self.selected_pairs_listWidget.setEnabled(False)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.selected_pairs_listWidget.sizePolicy().hasHeightForWidth())
+        self.selected_pairs_listWidget.setSizePolicy(sizePolicy2)
 
-        self.gridLayout_2.addItem(self.verticalSpacer_2, 6, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.selected_pairs_listWidget, 2, 2, 1, 2)
 
         self.tabWidget_2.addTab(self.tab_3, "")
         self.tab_4 = QWidget()

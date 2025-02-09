@@ -1,3 +1,4 @@
+import math
 import pandas as pd
 
 from PySide6.QtWidgets import QMainWindow
@@ -92,6 +93,8 @@ class MainView(QMainWindow):
         else:
             self._ui.restore_begin_end_checkBox.setCheckState(Qt.CheckState.Unchecked)
 
+        self._ui.selected_pairs_listWidget.addItems(self._model.pairs)
+
     @Slot()
     def on_stock_connected(self):
         self._ui.stock_status_label.setText("Connected :)")
@@ -102,7 +105,6 @@ class MainView(QMainWindow):
         all_pairs = self._model.backend_api.get_all_pairs()
         self._ui.pairs_listWidget.clear()
         self._ui.pairs_listWidget.addItems(all_pairs)
-        self._ui.pairs_listWidget.setCurrentRow(0)
         for pair in self._model.pairs:
             item = self._ui.pairs_listWidget.findItems(pair, Qt.MatchFlag.MatchExactly)[0]
             self._ui.pairs_listWidget.item(self._ui.pairs_listWidget.row(item)).setSelected(True)
@@ -113,7 +115,6 @@ class MainView(QMainWindow):
         all_intervals = self._model.backend_api.get_available_intervals()
         self._ui.interval_comboBox.clear()
         self._ui.interval_comboBox.addItems(all_intervals)
-        self._ui.interval_comboBox.setCurrentIndex(0)
         if self._model.interval:
             self._ui.interval_comboBox.setCurrentText(self._model.interval)
         self._ui.interval_comboBox.blockSignals(False)
@@ -144,6 +145,8 @@ class MainView(QMainWindow):
         self._main_controller.pairs_listWidget_itemSelectionChanged(
             [item.text() for item in self._ui.pairs_listWidget.selectedItems()]
         )
+        self._ui.selected_pairs_listWidget.clear()
+        self._ui.selected_pairs_listWidget.addItems(self._model.pairs)
 
     @Slot()
     def on_use_current_end_datetime_changed(self):
@@ -155,24 +158,43 @@ class MainView(QMainWindow):
     @Slot()
     def on_data_to_draw(self):
         data = self._model.data
-        df: pd.DataFrame = data[self._model.pairs[0]][self._model.interval]
-        df.rename(
-            columns={
-                "Id": "id",
-                "Time": "time",
-                "Open": "open",
-                "High": "high",
-                "Low": "low",
-                "Close": "close",
-                "Volume": "volume",
-                "Turnover": "turnover",
-            },
-            inplace=True,
-        )
-        df = df.drop(["turnover", "id"], axis=1)
-        df.info()
+        pair_chart = []
+        for i, pair in enumerate(list(data.keys())):
+            df: pd.DataFrame = data[pair][self._model.interval]
+            df.rename(
+                columns={
+                    "Id": "id",
+                    "Time": "time",
+                    "Open": "open",
+                    "High": "high",
+                    "Low": "low",
+                    "Close": "close",
+                    "Volume": "volume",
+                    "Turnover": "turnover",
+                },
+                inplace=True,
+            )
+            df = df.drop(["turnover", "id"], axis=1)
 
-        chart = QtChart()
-        # # Columns: time | open | high | low | close | volume
-        chart.set(df)
-        self._ui.tradingView_gridLayout.addWidget(chart.get_webview(), 0, 0, 1, 1)
+            chart = QtChart(toolbox=True)
+            chart.legend(True)
+            chart.crosshair(
+                mode="normal", vert_color="#FFFFFF", vert_style="dotted", horz_color="#FFFFFF", horz_style="dotted"
+            )
+            chart.topbar.textbox("symbol", pair)
+            # # Columns: time | open | high | low | close | volume
+            chart.set(df)
+            chart.fit()
+            pair_chart.append((pair, chart))
+
+        num_pairs = len(pair_chart)
+        hGrid = 2
+        wGrid = math.ceil(num_pairs / hGrid)
+
+        for row in range(hGrid):
+            for col in range(wGrid):
+                pair, chart = pair_chart.pop(0) if len(pair_chart) > 0 else None
+                if chart:
+                    self._ui.tradingView_gridLayout.addWidget(
+                        chart.get_webview(), row, col, 1, 1
+                    )  # row, column, rowSpan, columnSpan
