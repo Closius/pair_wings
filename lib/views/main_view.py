@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QMainWindow
-from PySide6.QtCore import Slot, QTimer, Qt
+from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QIcon
 from lib.views.ui_mainwindow import Ui_MainWindow
 
@@ -42,10 +42,6 @@ class MainView(QMainWindow):
         self._model.stock_connected.connect(self.on_stock_connected)
         self._model.stock_disconnected.connect(self.on_stock_disconnected)
 
-        self._check_stock_connection_status_timer = QTimer(self)
-        self._check_stock_connection_status_timer.setInterval(1000)
-        self._check_stock_connection_status_timer.timeout.connect(self.check_stock_connection_status)
-
         # init Controller once all widget connections in View are set
         self._main_controller.init_controller()
 
@@ -61,31 +57,29 @@ class MainView(QMainWindow):
             self._ui.stockAutoConnect_checkBox.setCheckState(Qt.CheckState.Unchecked)
 
     @Slot()
-    def check_stock_connection_status(self):
-        if self._model.backend_api.is_stock_connected:
-            self._ui.stock_status_label.setText("Connected :)")
-            self._ui.stockConnect_pushButton.setText("Disconnect")
-            self.statusBar().showMessage(f"Connected | {self._model.stock_name} | {self._model.account_name}")
-        else:
-            self._ui.stock_status_label.setText("Disconnected :(")
-            self._ui.stockConnect_pushButton.setText("Connect")
-            self.statusBar().showMessage(f"Disconnected")
-            self._check_stock_connection_status_timer.stop()
-
-    @Slot()
     def on_stock_connected(self):
+        self._ui.stock_status_label.setText("Connected :)")
+        self._ui.stockConnect_pushButton.setText("Disconnect")
+        self.statusBar().showMessage(f"Connected | {self._model.stock_name} | {self._model.account_name}")
+
         all_pairs = self._model.backend_api.get_all_pairs()
+        self._ui.pairs_listWidget.clear()
         self._ui.pairs_listWidget.addItems(all_pairs)
         self._ui.pairs_listWidget.setCurrentRow(0)
+
         self._ui.stockNames_comboBox.setDisabled(True)
         self._ui.accountNames_comboBox.setDisabled(True)
-        self._check_stock_connection_status_timer.start()
+        self._ui.draw_pushButton.setEnabled(True)
 
     @Slot()
     def on_stock_disconnected(self):
-        self._ui.pairs_listWidget.clear()
+        self._ui.stock_status_label.setText("Disconnected :(")
+        self._ui.stockConnect_pushButton.setText("Connect")
+        self.statusBar().showMessage("Disconnected")
+
         self._ui.stockNames_comboBox.setEnabled(True)
         self._ui.accountNames_comboBox.setEnabled(True)
+        self._ui.draw_pushButton.setDisabled(True)
 
     def closeEvent(self, event):
         self._model.backend_api.disconnect_stock()

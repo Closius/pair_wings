@@ -79,6 +79,7 @@ class StockBybit(IStock):
                 self.ws_private = None
             self._is_http_ws_private_exist = True
 
+            # wait for ws auth
             i = 0
             while not self._ws_private_success:
                 i += 1
@@ -96,7 +97,7 @@ class StockBybit(IStock):
         (public_HTTP, private_HTTP, public_websocket, private_websocket)
         this property returns False if ANY of them is disconnected
         """
-        if not self.http or not self.ws:
+        if not self.http or not self.ws or not self.ws.is_connected():
             return False
         if self._is_http_ws_private_exist:
             if not self.http_private or not self.ws_private:
