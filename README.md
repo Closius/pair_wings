@@ -1,7 +1,27 @@
 Pairwings
 =========
 
-Pairwings (or PW) is a framework for developing, testing and running the trading strategies. Features:
+Pairwings is a framework for development, backtesting, visualization, 
+                    deployment and remote management of the trading strategies. 
+
+Use cases
+---------
+
+1. Collect data (all, required for the user's strategy, eg order book and so on, should be adjustable) from 
+      the particular stock exchange to the local database. The collector can be run remotely (win, linux) as a 
+      demon with monitoring by Telegram bot.
+2. Use collected data for the local backtest: run the strategy from different starting points to collect metrics (profit/lose)
+   Why not use stock exchange simulator? - I'm not sure if is possible to simulate the market correct. 
+      Pairs behavior might be different depending on the volume, number of traders, datetime, fundamental knowledge of the coin, and so on.    
+      Testing on the historical real data gives more benefits. 
+3. Visualize the data and the strategy backtesting progress (buy/sell). Seeded up, manageable demonstration how the strategy is working. 
+4. Deploy strategy: to run it as a daemon on a remote machine (win, linux) with monitoring Telegram bot and 
+      managing (stop, start, edit some parameters and restart)
+
+Features:
+---------
+
+!! obsolete !!
 
 - backends. The interface to the stock exchange API allows to easy implement the plug-in 
   to APIs of the different stock exchanges 
@@ -16,6 +36,8 @@ Pairwings (or PW) is a framework for developing, testing and running the trading
 Limitations & Remarks
 ---------------------
 
+!! obsolete !!
+
 * Only Perpetual futures trading. 
 * All orders are executed by market price. 
   See more in the doc of methods `stock.open_modify_SHORT_LONG()` `stock.close_SHORT_LONG()`
@@ -28,7 +50,6 @@ gets added to the existing position, so if you had BTCUSDT position opened
 with quantity 2, and you open a new position with quantity 3, the existing 
 position's quantity will be added to 5 instead of opening a new position. 
 Only positions with different pairs are created individually.
-
 
 Roadmap
 -------
@@ -49,7 +70,7 @@ Roadmap
 Open questions: 
 
 1. Should I use SqlAlchemy ORM ?
-2. Should I try https://github.com/ccxt/ccxt ?  
+2. Should I try https://github.com/ccxt/ccxt ?  -  HELL YES
 3. TradingView plots in Python https://github.com/louisnw01/lightweight-charts-python or https://github.com/domarm-comat/pglive?tab=readme-ov-file
 
 Prerequisites
