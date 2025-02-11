@@ -11,9 +11,13 @@ Use cases
       the particular stock exchange to the local database. The collector can be run remotely (win, linux) as a 
       demon with monitoring by Telegram bot.
 2. Use collected data for the local backtest: run the strategy from different starting points to collect metrics (profit/lose)
-   Why not use stock exchange simulator? - I'm not sure if is possible to simulate the market correct. 
-      Pairs behavior might be different depending on the volume, number of traders, datetime, fundamental knowledge of the coin, and so on.    
-      Testing on the historical real data gives more benefits. 
+   - Q: Why not use stock exchange simulator? 
+   - A: I'm not sure if is possible to simulate the real market behavior correctly. 
+     - There is no known strategy exist which can be 100% beneficial on [Brownian Motion](https://en.wikipedia.org/wiki/Brownian_motion). 
+       So any strategy probably should use some properties, behavioral features of the coin (pair)  
+     - Pairs behavior might be different depending on the volume, number of traders, datetime, fundamental knowledge of the coin, and so on.    
+       Testing on the historical real data gives more benefits. 
+   - Idea: Maybe add the capability to test on Brownian Motion
 3. Visualize the data and the strategy backtesting progress (buy/sell). Seeded up, manageable demonstration how the strategy is working. 
 4. Deploy strategy: to run it as a daemon on a remote machine (win, linux) with monitoring Telegram bot and 
       managing (stop, start, edit some parameters and restart)
@@ -53,6 +57,9 @@ Only positions with different pairs are created individually.
 
 Roadmap
 -------
+
+
+0. Engine for running strategy
 
 1. Finish the implementation of ByBit backend which allows to finish implementations of the data maps.
    1. next TODO: think about: remember last N (by datetime duration?) States (lib/state_collection.py)
