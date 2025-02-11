@@ -14,7 +14,7 @@ Use cases
    - Q: Why not use stock exchange simulator? 
    - A: I'm not sure if is possible to simulate the real market behavior correctly. 
      - There is no known strategy exist which can be 100% beneficial on [Brownian Motion](https://en.wikipedia.org/wiki/Brownian_motion). 
-       So any strategy probably should use some properties, behavioral features of the coin (pair)  
+       So any strategy probably should use some properties, behavioral features of the pair (or several pairs together)
      - Pairs behavior might be different depending on the volume, number of traders, datetime, fundamental knowledge of the coin, and so on.    
        Testing on the historical real data gives more benefits. 
    - Idea: Maybe add the capability to test on Brownian Motion
