@@ -6,6 +6,8 @@ Pairwings
 Pairwings is a framework for development, backtesting, visualization, 
                     deployment and remote management of the trading strategies. 
 
+![UI](main_ui.gif)
+
 Use cases
 ---------
 
