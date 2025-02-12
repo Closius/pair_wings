@@ -89,9 +89,34 @@ Python 3.12
 
 `python.exe -m pip install -r requirements.txt`
 
+PS: not all of them are required
+
 qt designer: https://build-system.fman.io/qt-designer-download
 
 Quick start
 -----------
 
-1. Run the program `python.exe main.py`
+1. Add secrets `api_secrets.json` to the current dir
+
+```json
+
+{
+  "stocks": {
+    "bybit": {
+      "accounts": {
+        "pair_wings": {
+          "API_KEY": "YOUR VALUE",
+          "API_SECRET": "YOUR VALUE"
+        },
+        "pair_wings_demo": {
+          "API_KEY": "YOUR KEY",
+          "API_SECRET": "YOUR VALUE"
+        }
+      }
+    }
+  }
+}
+
+```
+
+2. Run `python.exe mvc_app.py`
