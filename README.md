@@ -1,6 +1,8 @@
 Pairwings
 =========
 
+**UPD** After founding the existing analog https://www.freqtrade.io/en/stable/ - I don't maintain this project
+
 Pairwings is a framework for development, backtesting, visualization, 
                     deployment and remote management of the trading strategies. 
 
